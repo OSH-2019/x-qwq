@@ -1,7 +1,5 @@
 # 调研
 
-*斜体的内容不要写进报告里……*
-
 ## Fuchsia
 
 ### Fuchsia的简介与设计架构
@@ -28,11 +26,11 @@ Fuchsia的源代码可以被编译到x86和ARM两套指令集，因此有人认�
 
 Fuchsia的调度算法在`kernel/kernel/sched.cpp`下面。`sched_init_early`函数用于最开始内核对调度队列进行初始化，可以看出内核会给每个CPU设置若干不同优先级的链表（队列）。`sched_resched_internal`函数负责在发生线程阻塞、主动放弃时间片(10ms)、因为中断而被抢占（包括时间片耗尽）、主动要求重新调度CPU等情况之后，进行线程的重新调度；在这个函数中，调度的核心是调用`sched_get_top_thread`函数，它会找出CPU中最高优先级的调度队列，并将队头出队。此外，如果线程被设置为是实时的(real_time)，那么它将不会被抢占。此外，时间片耗尽会导致线程的优先级下降。
 
-可以看到，Fuchsia的调度算法基本比较简单，和课本第5章所描述的多级反馈队列调度比较相像，但增加了对于不被抢占的实时线程的支持。 *(我并没有看出sched.cpp里，除了分配时间片以外，对线程有什么ddl的要求。但Fuchsia被视为实时操作系统，可能只是因为它支持立即响应高优先级的线程？)*
+可以看到，Fuchsia的调度算法基本比较简单，和课本第5章所描述的多级反馈队列调度比较相像，但增加了对于不被抢占的实时线程的支持。
 
 内核模块也提供了IPC相关机制。`kernel/kernel/mutex.cpp`提供了基本的互斥锁，实现了`acquire`和`release`方法，而且其思路和课本6.5节基本一致。除了互斥锁，`kernel/object/semaphore.cpp`也提供了信号量，实现了`wait`和`post`(signal)方法，属于记录型信号量（会记录等待获取资源的队列，并选择合适的时机阻塞或唤起）。
 
-但是Fuchsia似乎并没有使用上面的机制。按照官方文档所说，为了实现IPC的效率、确定性、健壮性、易用性，Fuchsia使用了一种特殊的描述语言——FIDL（Fuchsia接口定义语言）来描述IPC。这样的话，编写应用程序时就不需要关心底层的实现，而可以直接使用FIDL来抽象地描述IPC，最后通过fidlc编译器编译到所使用的编程语言的代码（包括C,C++,Dart和Rust）。在FIDL的模型中，两个应用程序（客户端与服务端）位于上层，而底层会使用"channel"进行通信。从内核代码上看，在`kernel/object/`下面有`channel_dispatcher.cpp` `process_dispatcher.cpp`等文件，实现进程间消息的派发，所以推测它们可能类似于管程，用来实现IPC。 *(我不是很清楚为什么会这样子)*
+但是Fuchsia似乎并没有使用上面的机制。按照官方文档所说，为了实现IPC的效率、确定性、健壮性、易用性，Fuchsia使用了一种特殊的描述语言——FIDL（Fuchsia接口定义语言）来描述IPC。这样的话，编写应用程序时就不需要关心底层的实现，而可以直接使用FIDL来抽象地描述IPC，最后通过fidlc编译器编译到所使用的编程语言的代码（包括C,C++,Dart和Rust）。在FIDL的模型中，两个应用程序（客户端与服务端）位于上层，而底层会使用"channel"进行通信。从内核代码上看，在`kernel/object/`下面有`channel_dispatcher.cpp` `process_dispatcher.cpp`等文件，实现进程间消息的派发，所以推测它们可能类似于管程，用来实现IPC。
 
 ### Fuchsia中的namespace
 
@@ -40,7 +38,7 @@ Fuchsia的调度算法在`kernel/kernel/sched.cpp`下面。`sched_init_early`函
 
 从某种意义上说，namespace是对根文件系统的一种抽象。因为Zircon是微内核架构，所以文件系统从内核中分离出去了，成为了单独的模块，并使用Fuchsia中的IPC机制进行文件的访问。文件系统成为了一种接口，这样就带来了文件系统的抽象：Fuchsia中将文件、服务、设备等等对象抽象为了不同的namespace。比如，`/bin`并不一定代表根目录下的bin文件夹，而可能代表一个名字叫bin的namespace，通过它对应的进程所提供的句柄进行操作。（这似乎与Redox中的URL抽象有类似之处）
 
-namespace为Fuchsia提供了一定的安全性的保证。相比于使用用户和用户组来控制文件的各种权限的Linux系统，在Fuchsia中没有用户的概念，进程的权限由namespace来控制。这样，传统的利用用户机制提权的攻击方法就不起效。Fuchsia中也不存在全局的文件系统，不能随意使用`..`来访问上级目录。 *(我并不是很懂安全。。)*
+namespace为Fuchsia提供了一定的安全性的保证。相比于使用用户和用户组来控制文件的各种权限的Linux系统，在Fuchsia中没有用户的概念，进程的权限由namespace来控制。这样，传统的利用用户机制提权的攻击方法就不起效。Fuchsia中也不存在全局的文件系统，不能随意使用`..`来访问上级目录。 
 
 ## Rust
 
