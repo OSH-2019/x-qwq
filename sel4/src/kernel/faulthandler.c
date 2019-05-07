@@ -14,6 +14,7 @@
 #include <kernel/thread.h>
 #include <machine/io.h>
 #include <arch/machine.h>
+#include <arch/kernel/vspace.h>
 
 void
 handleFault(tcb_t *tptr)

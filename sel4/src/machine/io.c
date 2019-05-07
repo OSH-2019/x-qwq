@@ -14,6 +14,7 @@
 #ifdef CONFIG_PRINTING
 
 #include <stdarg.h>
+#include <types.h>
 
 void
 putchar(char c)

@@ -13,6 +13,7 @@
 #include <config.h>
 #include <api/debug.h>
 #include <util.h>
+#include <machine/io.h>
 
 void idle_thread(void)
 {

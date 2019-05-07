@@ -16,6 +16,8 @@
 #ifdef HAVE_AUTOCONF
 #include <autoconf.h>
 #endif
+#include <util.h>
+#include <arch/types.h>
 
 #if (defined CONFIG_BENCHMARK_TRACK_KERNEL_ENTRIES || defined CONFIG_DEBUG_BUILD)
 

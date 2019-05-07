@@ -1,6 +1,6 @@
 CC=gcc
 CPP=cpp
-CFLAGS=-std=c99 -Wall -O2 -mcmodel=kernel -nostdinc -nostdlib -mtune=generic -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -m64 -mno-mmx -mno-sse -mno-sse2 -mno-3dnow -ffreestanding -Wa,--64 -D__KERNEL_64__ -DHAVE_AUTOCONF -DNDEBUG -DCONFIG_ARCH_X86_64 -m64
+CFLAGS=-std=c99 -Wall -O2 -mcmodel=kernel -nostdinc -nostdlib -mtune=generic -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -m64 -mno-mmx -mno-sse -mno-sse2 -mno-3dnow -ffreestanding -Wa,--64 -D__KERNEL_64__ -DHAVE_AUTOCONF -DDEBUG -g -ggdb -DCONFIG_ARCH_X86_64 -m64 -march=nehalem
 INCLUDE=-Iinclude -Iinclude/64 -Iinclude/arch/x86 -Iinclude/arch/x86/arch/64 -Iinclude/plat/pc99 -Iinclude/plat/pc99/plat/64 -Igen_config -Igenerated -Iautoconf -Igen_headers -Ilibsel4/include
 OBJECT_DIR=object
 RUSTC=rustc
@@ -8,9 +8,39 @@ ASM=as
 ASMFLAGS=--64
 LD=ld
 LDFLAGS=-n -static
-OBJECTS=$(OBJECT_DIR)/inlines.o $(OBJECT_DIR)/assert.o $(OBJECT_DIR)/util.o $(OBJECT_DIR)/string.o $(OBJECT_DIR)/fastpath/fastpath.o $(OBJECT_DIR)/api/syscall.o $(OBJECT_DIR)/api/faults.o $(OBJECT_DIR)/kernel/cspace.o $(OBJECT_DIR)/kernel/faulthandler.o $(OBJECT_DIR)/kernel/thread.o $(OBJECT_DIR)/kernel/boot.o $(OBJECT_DIR)/kernel/stack.o $(OBJECT_DIR)/$(OBJECT_DIR)/notification.o $(OBJECT_DIR)/$(OBJECT_DIR)/cnode.o $(OBJECT_DIR)/$(OBJECT_DIR)/endpoint.o $(OBJECT_DIR)/$(OBJECT_DIR)/interrupt.o $(OBJECT_DIR)/$(OBJECT_DIR)/$(OBJECT_DIR)type.o $(OBJECT_DIR)/$(OBJECT_DIR)/tcb.o $(OBJECT_DIR)/$(OBJECT_DIR)/untyped.o $(OBJECT_DIR)/model/preemption.o $(OBJECT_DIR)/model/statedata.o $(OBJECT_DIR)/model/smp.o $(OBJECT_DIR)/machine/io.o $(OBJECT_DIR)/machine/registerset.o $(OBJECT_DIR)/machine/fpu.o $(OBJECT_DIR)/benchmark/benchmark_track.o $(OBJECT_DIR)/benchmark/benchmark_utilisation.o $(OBJECT_DIR)/smp/lock.o $(OBJECT_DIR)/smp/ipi.o $(OBJECT_DIR)/arch/x86/c_traps.o $(OBJECT_DIR)/arch/x86/idle.o $(OBJECT_DIR)/arch/x86/api/faults.o $(OBJECT_DIR)/arch/x86/object/interrupt.o $(OBJECT_DIR)/arch/x86/object/ioport.o $(OBJECT_DIR)/arch/x86/object/objecttype.o $(OBJECT_DIR)/arch/x86/object/tcb.o $(OBJECT_DIR)/arch/x86/object/iospace.o $(OBJECT_DIR)/arch/x86/object/vcpu.o $(OBJECT_DIR)/arch/x86/kernel/vspace.o $(OBJECT_DIR)/arch/x86/kernel/apic.o $(OBJECT_DIR)/arch/x86/kernel/xapic.o $(OBJECT_DIR)/arch/x86/kernel/x2apic.o $(OBJECT_DIR)/arch/x86/kernel/boot_sys.o $(OBJECT_DIR)/arch/x86/kernel/smp_sys.o $(OBJECT_DIR)/arch/x86/kernel/boot.o $(OBJECT_DIR)/arch/x86/kernel/cmdline.o $(OBJECT_DIR)/arch/x86/kernel/ept.o $(OBJECT_DIR)/arch/x86/kernel/thread.o $(OBJECT_DIR)/arch/x86/model/statedata.o $(OBJECT_DIR)/arch/x86/machine/hardware.o $(OBJECT_DIR)/arch/x86/machine/fpu.o $(OBJECT_DIR)/arch/x86/machine/cpu_identification.o $(OBJECT_DIR)/arch/x86/machine/breakpoint.o $(OBJECT_DIR)/arch/x86/machine/registerset.o $(OBJECT_DIR)/arch/x86/benchmark/benchmark.o $(OBJECT_DIR)/arch/x86/smp/ipi.o $(OBJECT_DIR)/arch/x86/64/c_traps.o $(OBJECT_DIR)/arch/x86/64/object/objecttype.o $(OBJECT_DIR)/arch/x86/64/kernel/thread.o $(OBJECT_DIR)/arch/x86/64/kernel/vspace.o $(OBJECT_DIR)/arch/x86/64/kernel/elf.o $(OBJECT_DIR)/arch/x86/64/model/statedata.o $(OBJECT_DIR)/arch/x86/64/model/smp.o $(OBJECT_DIR)/arch/x86/64/machine/registerset.o $(OBJECT_DIR)/arch/x86/64/smp/ipi.o $(OBJECT_DIR)/arch/x86/multiboot.o $(OBJECT_DIR)/arch/x86/64/machine_asm.o $(OBJECT_DIR)/arch/x86/64/traps.o $(OBJECT_DIR)/arch/x86/64/head.o $(OBJECT_DIR)/plat/pc99/machine/acpi.o $(OBJECT_DIR)/plat/pc99/machine/hardware.o $(OBJECT_DIR)/plat/pc99/machine/pic.o $(OBJECT_DIR)/plat/pc99/machine/ioapic.o $(OBJECT_DIR)/plat/pc99/machine/pit.o $(OBJECT_DIR)/plat/pc99/machine/io.o $(OBJECT_DIR)/plat/pc99/machine/intel-vtd.o $(OBJECT_DIR)/config/default_domain.o
+OBJECTS=$(OBJECT_DIR)/inlines.o $(OBJECT_DIR)/assert.o $(OBJECT_DIR)/util.o $(OBJECT_DIR)/string.o $(OBJECT_DIR)/fastpath/fastpath.o $(OBJECT_DIR)/api/syscall.o $(OBJECT_DIR)/api/faults.o $(OBJECT_DIR)/kernel/cspace.o $(OBJECT_DIR)/kernel/faulthandler.o $(OBJECT_DIR)/kernel/thread.o $(OBJECT_DIR)/kernel/boot.o $(OBJECT_DIR)/kernel/stack.o $(OBJECT_DIR)/object/notification.o $(OBJECT_DIR)/object/cnode.o $(OBJECT_DIR)/object/endpoint.o $(OBJECT_DIR)/object/interrupt.o $(OBJECT_DIR)/object/objecttype.o $(OBJECT_DIR)/object/tcb.o $(OBJECT_DIR)/object/untyped.o $(OBJECT_DIR)/model/preemption.o $(OBJECT_DIR)/model/statedata.o $(OBJECT_DIR)/model/smp.o $(OBJECT_DIR)/machine/io.o $(OBJECT_DIR)/machine/registerset.o $(OBJECT_DIR)/machine/fpu.o $(OBJECT_DIR)/benchmark/benchmark_track.o $(OBJECT_DIR)/benchmark/benchmark_utilisation.o $(OBJECT_DIR)/smp/lock.o $(OBJECT_DIR)/smp/ipi.o $(OBJECT_DIR)/arch/x86/c_traps.o $(OBJECT_DIR)/arch/x86/idle.o $(OBJECT_DIR)/arch/x86/api/faults.o $(OBJECT_DIR)/arch/x86/object/interrupt.o $(OBJECT_DIR)/arch/x86/object/ioport.o $(OBJECT_DIR)/arch/x86/object/objecttype.o $(OBJECT_DIR)/arch/x86/object/tcb.o $(OBJECT_DIR)/arch/x86/object/iospace.o $(OBJECT_DIR)/arch/x86/object/vcpu.o $(OBJECT_DIR)/arch/x86/kernel/vspace.o $(OBJECT_DIR)/arch/x86/kernel/apic.o $(OBJECT_DIR)/arch/x86/kernel/xapic.o $(OBJECT_DIR)/arch/x86/kernel/x2apic.o $(OBJECT_DIR)/arch/x86/kernel/boot_sys.o $(OBJECT_DIR)/arch/x86/kernel/smp_sys.o $(OBJECT_DIR)/arch/x86/kernel/boot.o $(OBJECT_DIR)/arch/x86/kernel/cmdline.o $(OBJECT_DIR)/arch/x86/kernel/ept.o $(OBJECT_DIR)/arch/x86/kernel/thread.o $(OBJECT_DIR)/arch/x86/model/statedata.o $(OBJECT_DIR)/arch/x86/machine/hardware.o $(OBJECT_DIR)/arch/x86/machine/fpu.o $(OBJECT_DIR)/arch/x86/machine/cpu_identification.o $(OBJECT_DIR)/arch/x86/machine/breakpoint.o $(OBJECT_DIR)/arch/x86/machine/registerset.o $(OBJECT_DIR)/arch/x86/machine/capdl.o $(OBJECT_DIR)/arch/x86/benchmark/benchmark.o $(OBJECT_DIR)/arch/x86/smp/ipi.o $(OBJECT_DIR)/arch/x86/64/c_traps.o $(OBJECT_DIR)/arch/x86/64/object/objecttype.o $(OBJECT_DIR)/arch/x86/64/kernel/thread.o $(OBJECT_DIR)/arch/x86/64/kernel/vspace.o $(OBJECT_DIR)/arch/x86/64/kernel/elf.o $(OBJECT_DIR)/arch/x86/64/model/statedata.o $(OBJECT_DIR)/arch/x86/64/model/smp.o $(OBJECT_DIR)/arch/x86/64/machine/registerset.o $(OBJECT_DIR)/arch/x86/64/smp/ipi.o $(OBJECT_DIR)/arch/x86/multiboot.o $(OBJECT_DIR)/arch/x86/64/machine_asm.o $(OBJECT_DIR)/arch/x86/64/traps.o $(OBJECT_DIR)/arch/x86/64/head.o $(OBJECT_DIR)/plat/pc99/machine/acpi.o $(OBJECT_DIR)/plat/pc99/machine/hardware.o $(OBJECT_DIR)/plat/pc99/machine/pic.o $(OBJECT_DIR)/plat/pc99/machine/ioapic.o $(OBJECT_DIR)/plat/pc99/machine/pit.o $(OBJECT_DIR)/plat/pc99/machine/io.o $(OBJECT_DIR)/plat/pc99/machine/intel-vtd.o $(OBJECT_DIR)/config/default_domain.o
 
-ALL: $(OBJECTS) kernel.elf
+ALL: DIR $(OBJECTS) kernel.elf kernel
+
+DIR:
+	mkdir $(OBJECT_DIR)
+	mkdir $(OBJECT_DIR)/api
+	mkdir $(OBJECT_DIR)/object
+	mkdir $(OBJECT_DIR)/config
+	mkdir $(OBJECT_DIR)/plat
+	mkdir $(OBJECT_DIR)/plat/pc99
+	mkdir $(OBJECT_DIR)/plat/pc99/machine
+	mkdir $(OBJECT_DIR)/fastpath
+	mkdir $(OBJECT_DIR)/kernel
+	mkdir $(OBJECT_DIR)/arch
+	mkdir $(OBJECT_DIR)/arch/x86
+	mkdir $(OBJECT_DIR)/arch/x86/64
+	mkdir $(OBJECT_DIR)/arch/x86/64/kernel
+	mkdir $(OBJECT_DIR)/arch/x86/64/object
+	mkdir $(OBJECT_DIR)/arch/x86/64/machine
+	mkdir $(OBJECT_DIR)/arch/x86/64/model
+	mkdir $(OBJECT_DIR)/arch/x86/64/smp
+	mkdir $(OBJECT_DIR)/arch/x86/object
+	mkdir $(OBJECT_DIR)/arch/x86/benchmark
+	mkdir $(OBJECT_DIR)/arch/x86/kernel
+	mkdir $(OBJECT_DIR)/arch/x86/machine
+	mkdir $(OBJECT_DIR)/arch/x86/model
+	mkdir $(OBJECT_DIR)/arch/x86/smp
+	mkdir $(OBJECT_DIR)/arch/x86/api
+	mkdir $(OBJECT_DIR)/benchmark
+	mkdir $(OBJECT_DIR)/machine
+	mkdir $(OBJECT_DIR)/model
+	mkdir $(OBJECT_DIR)/smp
 
 $(OBJECT_DIR)/inlines.o: src/inlines.c
 	$(CC) $(CFLAGS) $(INCLUDE) src/inlines.c -c -o $(OBJECT_DIR)/inlines.o
@@ -36,20 +66,20 @@ $(OBJECT_DIR)/kernel/boot.o: src/kernel/boot.c
 	$(CC) $(CFLAGS) $(INCLUDE) src/kernel/boot.c -c -o $(OBJECT_DIR)/kernel/boot.o
 $(OBJECT_DIR)/kernel/stack.o: src/kernel/stack.c
 	$(CC) $(CFLAGS) $(INCLUDE) src/kernel/stack.c -c -o $(OBJECT_DIR)/kernel/stack.o
-$(OBJECT_DIR)/$(OBJECT_DIR)/notification.o: src/$(OBJECT_DIR)/notification.c
-	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/notification.c -c -o $(OBJECT_DIR)/$(OBJECT_DIR)/notification.o
-$(OBJECT_DIR)/$(OBJECT_DIR)/cnode.o: src/$(OBJECT_DIR)/cnode.c
-	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/cnode.c -c -o $(OBJECT_DIR)/$(OBJECT_DIR)/cnode.o
-$(OBJECT_DIR)/$(OBJECT_DIR)/endpoint.o: src/$(OBJECT_DIR)/endpoint.c
-	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/endpoint.c -c -o $(OBJECT_DIR)/$(OBJECT_DIR)/endpoint.o
-$(OBJECT_DIR)/$(OBJECT_DIR)/interrupt.o: src/$(OBJECT_DIR)/interrupt.c
-	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/interrupt.c -c -o $(OBJECT_DIR)/$(OBJECT_DIR)/interrupt.o
-$(OBJECT_DIR)/$(OBJECT_DIR)/$(OBJECT_DIR)type.o: src/$(OBJECT_DIR)/$(OBJECT_DIR)type.c
-	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/$(OBJECT_DIR)type.c -c -o $(OBJECT_DIR)/$(OBJECT_DIR)/$(OBJECT_DIR)type.o
-$(OBJECT_DIR)/$(OBJECT_DIR)/tcb.o: src/$(OBJECT_DIR)/tcb.c
-	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/tcb.c -c -o $(OBJECT_DIR)/$(OBJECT_DIR)/tcb.o
-$(OBJECT_DIR)/$(OBJECT_DIR)/untyped.o: src/$(OBJECT_DIR)/untyped.c
-	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/untyped.c -c -o $(OBJECT_DIR)/$(OBJECT_DIR)/untyped.o
+$(OBJECT_DIR)/object/notification.o: src/$(OBJECT_DIR)/notification.c
+	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/notification.c -c -o $(OBJECT_DIR)/object/notification.o
+$(OBJECT_DIR)/object/cnode.o: src/$(OBJECT_DIR)/cnode.c
+	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/cnode.c -c -o $(OBJECT_DIR)/object/cnode.o
+$(OBJECT_DIR)/object/endpoint.o: src/$(OBJECT_DIR)/endpoint.c
+	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/endpoint.c -c -o $(OBJECT_DIR)/object/endpoint.o
+$(OBJECT_DIR)/object/interrupt.o: src/$(OBJECT_DIR)/interrupt.c
+	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/interrupt.c -c -o $(OBJECT_DIR)/object/interrupt.o
+$(OBJECT_DIR)/object/$(OBJECT_DIR)type.o: src/$(OBJECT_DIR)/objecttype.c
+	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/objecttype.c -c -o $(OBJECT_DIR)/object/$(OBJECT_DIR)type.o
+$(OBJECT_DIR)/object/tcb.o: src/$(OBJECT_DIR)/tcb.c
+	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/tcb.c -c -o $(OBJECT_DIR)/object/tcb.o
+$(OBJECT_DIR)/object/untyped.o: src/$(OBJECT_DIR)/untyped.c
+	$(CC) $(CFLAGS) $(INCLUDE) src/$(OBJECT_DIR)/untyped.c -c -o $(OBJECT_DIR)/object/untyped.o
 $(OBJECT_DIR)/model/preemption.o: src/model/preemption.c
 	$(CC) $(CFLAGS) $(INCLUDE) src/model/preemption.c -c -o $(OBJECT_DIR)/model/preemption.o
 $(OBJECT_DIR)/model/statedata.o: src/model/statedata.c
@@ -121,6 +151,8 @@ $(OBJECT_DIR)/arch/x86/machine/breakpoint.o: src/arch/x86/machine/breakpoint.c
 	$(CC) $(CFLAGS) $(INCLUDE) src/arch/x86/machine/breakpoint.c -c -o $(OBJECT_DIR)/arch/x86/machine/breakpoint.o
 $(OBJECT_DIR)/arch/x86/machine/registerset.o: src/arch/x86/machine/registerset.c
 	$(CC) $(CFLAGS) $(INCLUDE) src/arch/x86/machine/registerset.c -c -o $(OBJECT_DIR)/arch/x86/machine/registerset.o
+$(OBJECT_DIR)/arch/x86/machine/capdl.o: src/arch/x86/machine/capdl.c
+	$(CC) $(CFLAGS) $(INCLUDE) src/arch/x86/machine/capdl.c -c -o $(OBJECT_DIR)/arch/x86/machine/capdl.o
 $(OBJECT_DIR)/arch/x86/benchmark/benchmark.o: src/arch/x86/benchmark/benchmark.c
 	$(CC) $(CFLAGS) $(INCLUDE) src/arch/x86/benchmark/benchmark.c -c -o $(OBJECT_DIR)/arch/x86/benchmark/benchmark.o
 $(OBJECT_DIR)/arch/x86/smp/ipi.o: src/arch/x86/smp/ipi.c
@@ -175,7 +207,12 @@ kernel.elf: $(OBJECTS)
 	$(CPP) $(INCLUDE) src/plat/pc99/linker.lds -o lds.tmp -P -DCONFIG_ARCH_X86_64
 	$(LD) $(LDFLAGS) $(OBJECTS) -T lds.tmp -o kernel.elf
 
+kernel: kernel.elf
+	objcopy -O elf32-i386 kernel.elf kernel
+
 clean:
-	rm $(OBJECTS)
-	rm lds.tmp
-	rm kernel.elf
+	rm -f $(OBJECTS)
+	rm -f lds.tmp
+	rm -f kernel.elf
+	rm -f kernel
+	rm -rf $(OBJECT_DIR)

@@ -15,6 +15,7 @@
 #include <machine/capdl.h>
 #include <arch/machine/capdl.h>
 #include <machine/io.h>
+#include <plat/pc99/plat/64/plat_mode/machine/hardware.h>
 
 #ifdef CONFIG_DEBUG_BUILD
 

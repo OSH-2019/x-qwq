@@ -197,10 +197,32 @@ pte_new(uint64_t xd, uint64_t page_base_address, uint64_t global, uint64_t pat, 
     return pte;
 }
 
+static inline uint64_t CONST
+pte_get_page_base_address(pte_t pte) {
+    uint64_t ret;
+    ret = (pte.words[0] & 0x7fffffffff000ull) << 0;
+    /* Possibly sign extend */
+    if (0 && (ret & (1ull << (50)))) {
+        ret |= 0x0;
+    }
+    return ret;
+}
+
 static inline uint64_t PURE
 pte_ptr_get_page_base_address(pte_t *pte_ptr) {
     uint64_t ret;
     ret = (pte_ptr->words[0] & 0x7fffffffff000ull) << 0;
+    /* Possibly sign extend */
+    if (0 && (ret & (1ull << (50)))) {
+        ret |= 0x0;
+    }
+    return ret;
+}
+
+static inline uint64_t CONST
+pte_get_super_user(pte_t pte) {
+    uint64_t ret;
+    ret = (pte.words[0] & 0x4ull) >> 2;
     /* Possibly sign extend */
     if (0 && (ret & (1ull << (50)))) {
         ret |= 0x0;
@@ -423,6 +445,17 @@ static inline uint64_t CONST
 cr3_get_pml4_base_address(cr3_t cr3) {
     uint64_t ret;
     ret = (cr3.words[0] & 0x7fffffffff000ull) << 0;
+    /* Possibly sign extend */
+    if (0 && (ret & (1ull << (50)))) {
+        ret |= 0x0;
+    }
+    return ret;
+}
+
+static inline uint64_t CONST
+cr3_get_pcid(cr3_t cr3) {
+    uint64_t ret;
+    ret = (cr3.words[0] & 0xfffull) >> 0;
     /* Possibly sign extend */
     if (0 && (ret & (1ull << (50)))) {
         ret |= 0x0;
@@ -3270,6 +3303,11 @@ enum pde_tag {
 };
 typedef enum pde_tag pde_tag_t;
 
+static inline uint64_t CONST
+pde_get_page_size(pde_t pde) {
+    return (pde.words[0] >> 7) & 0x1ull;
+}
+
 static inline uint64_t PURE
 pde_ptr_get_page_size(pde_t *pde_ptr) {
     return (pde_ptr->words[0] >> 7) & 0x1ull;
@@ -3304,6 +3342,20 @@ pde_pde_pt_new(uint64_t xd, uint64_t pt_base_address, uint64_t accessed, uint64_
     return pde;
 }
 
+static inline uint64_t CONST
+pde_pde_pt_get_pt_base_address(pde_t pde) {
+    uint64_t ret;
+    assert(((pde.words[0] >> 7) & 0x1) ==
+           pde_pde_pt);
+
+    ret = (pde.words[0] & 0x7fffffffff000ull) << 0;
+    /* Possibly sign extend */
+    if (0 && (ret & (1ull << (50)))) {
+        ret |= 0x0;
+    }
+    return ret;
+}
+
 static inline uint64_t PURE
 pde_pde_pt_ptr_get_pt_base_address(pde_t *pde_ptr) {
     uint64_t ret;
@@ -3311,6 +3363,34 @@ pde_pde_pt_ptr_get_pt_base_address(pde_t *pde_ptr) {
            pde_pde_pt);
 
     ret = (pde_ptr->words[0] & 0x7fffffffff000ull) << 0;
+    /* Possibly sign extend */
+    if (0 && (ret & (1ull << (50)))) {
+        ret |= 0x0;
+    }
+    return ret;
+}
+
+static inline uint64_t CONST
+pde_pde_pt_get_super_user(pde_t pde) {
+    uint64_t ret;
+    assert(((pde.words[0] >> 7) & 0x1) ==
+           pde_pde_pt);
+
+    ret = (pde.words[0] & 0x4ull) >> 2;
+    /* Possibly sign extend */
+    if (0 && (ret & (1ull << (50)))) {
+        ret |= 0x0;
+    }
+    return ret;
+}
+
+static inline uint64_t CONST
+pde_pde_pt_get_present(pde_t pde) {
+    uint64_t ret;
+    assert(((pde.words[0] >> 7) & 0x1) ==
+           pde_pde_pt);
+
+    ret = (pde.words[0] & 0x1ull) >> 0;
     /* Possibly sign extend */
     if (0 && (ret & (1ull << (50)))) {
         ret |= 0x0;
@@ -3367,6 +3447,20 @@ pde_pde_large_new(uint64_t xd, uint64_t page_base_address, uint64_t pat, uint64_
     return pde;
 }
 
+static inline uint64_t CONST
+pde_pde_large_get_page_base_address(pde_t pde) {
+    uint64_t ret;
+    assert(((pde.words[0] >> 7) & 0x1) ==
+           pde_pde_large);
+
+    ret = (pde.words[0] & 0x7ffffffe00000ull) << 0;
+    /* Possibly sign extend */
+    if (0 && (ret & (1ull << (50)))) {
+        ret |= 0x0;
+    }
+    return ret;
+}
+
 static inline uint64_t PURE
 pde_pde_large_ptr_get_page_base_address(pde_t *pde_ptr) {
     uint64_t ret;
@@ -3374,6 +3468,34 @@ pde_pde_large_ptr_get_page_base_address(pde_t *pde_ptr) {
            pde_pde_large);
 
     ret = (pde_ptr->words[0] & 0x7ffffffe00000ull) << 0;
+    /* Possibly sign extend */
+    if (0 && (ret & (1ull << (50)))) {
+        ret |= 0x0;
+    }
+    return ret;
+}
+
+static inline uint64_t CONST
+pde_pde_large_get_super_user(pde_t pde) {
+    uint64_t ret;
+    assert(((pde.words[0] >> 7) & 0x1) ==
+           pde_pde_large);
+
+    ret = (pde.words[0] & 0x4ull) >> 2;
+    /* Possibly sign extend */
+    if (0 && (ret & (1ull << (50)))) {
+        ret |= 0x0;
+    }
+    return ret;
+}
+
+static inline uint64_t CONST
+pde_pde_large_get_present(pde_t pde) {
+    uint64_t ret;
+    assert(((pde.words[0] >> 7) & 0x1) ==
+           pde_pde_large);
+
+    ret = (pde.words[0] & 0x1ull) >> 0;
     /* Possibly sign extend */
     if (0 && (ret & (1ull << (50)))) {
         ret |= 0x0;

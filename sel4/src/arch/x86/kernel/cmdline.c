@@ -15,6 +15,7 @@
 #include <arch/kernel/boot_sys.h>
 #include <linker.h>
 #include <plat/machine/io.h>
+#include <arch/model/statedata.h>
 
 /* 'cmdline_val' is declared globally because of a C-subset restriction.
  * It is only used in cmdline_parse(), which therefore is non-reentrant.

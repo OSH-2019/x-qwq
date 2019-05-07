@@ -19,6 +19,7 @@
 #include <arch/kernel/vspace.h>
 #include <model/statedata.h>
 #include <kernel/thread.h>
+#include <arch/machine.h>
 
 #ifdef CONFIG_PRINTING
 
