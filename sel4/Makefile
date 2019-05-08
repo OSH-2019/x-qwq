@@ -203,9 +203,12 @@ $(OBJECT_DIR)/plat/pc99/machine/intel-vtd.o: src/plat/pc99/machine/intel-vtd.c
 $(OBJECT_DIR)/config/default_domain.o: src/config/default_domain.c
 	$(CC) $(CFLAGS) $(INCLUDE) src/config/default_domain.c -c -o $(OBJECT_DIR)/config/default_domain.o
 
-kernel.elf: $(OBJECTS)
+RUST:
+	cd rust/sel4-rust && cargo build
+
+kernel.elf: $(OBJECTS) RUST
 	$(CPP) $(INCLUDE) src/plat/pc99/linker.lds -o lds.tmp -P -DCONFIG_ARCH_X86_64
-	$(LD) $(LDFLAGS) $(OBJECTS) -T lds.tmp -o kernel.elf
+	$(LD) $(LDFLAGS) $(OBJECTS) rust/sel4-rust/target/debug/libsel4_rust.a -T lds.tmp -o kernel.elf
 
 kernel: kernel.elf
 	objcopy -O elf32-i386 kernel.elf kernel
@@ -216,3 +219,4 @@ clean:
 	rm -f kernel.elf
 	rm -f kernel
 	rm -rf $(OBJECT_DIR)
+	cd rust/sel4-rust && cargo clean

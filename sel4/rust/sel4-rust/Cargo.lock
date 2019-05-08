@@ -1,0 +1,4 @@
+[[package]]
+name = "sel4-rust"
+version = "0.1.0"
+
