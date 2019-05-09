@@ -29,6 +29,8 @@
 #include <plat/pc99/plat/machine/hardware.h>
 #include <kernel/thread.h>
 
+extern int32_t rust_add(int32_t a, int32_t b);
+
 /* addresses defined in linker script */
 /* need a fake array to get the pointer from the linker script */
 
@@ -562,6 +564,7 @@ try_boot_sys(void)
     NODE_LOCK_SYS;
 
     printf("Booting all finished, dropped to user space\n");
+    printf("Testing rust: 1 + 2 = %d\n", rust_add(1, 2));
 
     return true;
 }

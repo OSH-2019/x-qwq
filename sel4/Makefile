@@ -3,7 +3,6 @@ CPP=cpp
 CFLAGS=-std=c99 -Wall -O2 -mcmodel=kernel -nostdinc -nostdlib -mtune=generic -fno-pic -fno-pie -fno-stack-protector -fno-asynchronous-unwind-tables -m64 -mno-mmx -mno-sse -mno-sse2 -mno-3dnow -ffreestanding -Wa,--64 -D__KERNEL_64__ -DHAVE_AUTOCONF -DDEBUG -g -ggdb -DCONFIG_ARCH_X86_64 -m64 -march=nehalem
 INCLUDE=-Iinclude -Iinclude/64 -Iinclude/arch/x86 -Iinclude/arch/x86/arch/64 -Iinclude/plat/pc99 -Iinclude/plat/pc99/plat/64 -Igen_config -Igenerated -Iautoconf -Igen_headers -Ilibsel4/include
 OBJECT_DIR=object
-RUSTC=rustc
 ASM=as
 ASMFLAGS=--64
 LD=ld
@@ -13,34 +12,34 @@ OBJECTS=$(OBJECT_DIR)/inlines.o $(OBJECT_DIR)/assert.o $(OBJECT_DIR)/util.o $(OB
 ALL: DIR $(OBJECTS) kernel.elf kernel
 
 DIR:
-	mkdir $(OBJECT_DIR)
-	mkdir $(OBJECT_DIR)/api
-	mkdir $(OBJECT_DIR)/object
-	mkdir $(OBJECT_DIR)/config
-	mkdir $(OBJECT_DIR)/plat
-	mkdir $(OBJECT_DIR)/plat/pc99
-	mkdir $(OBJECT_DIR)/plat/pc99/machine
-	mkdir $(OBJECT_DIR)/fastpath
-	mkdir $(OBJECT_DIR)/kernel
-	mkdir $(OBJECT_DIR)/arch
-	mkdir $(OBJECT_DIR)/arch/x86
-	mkdir $(OBJECT_DIR)/arch/x86/64
-	mkdir $(OBJECT_DIR)/arch/x86/64/kernel
-	mkdir $(OBJECT_DIR)/arch/x86/64/object
-	mkdir $(OBJECT_DIR)/arch/x86/64/machine
-	mkdir $(OBJECT_DIR)/arch/x86/64/model
-	mkdir $(OBJECT_DIR)/arch/x86/64/smp
-	mkdir $(OBJECT_DIR)/arch/x86/object
-	mkdir $(OBJECT_DIR)/arch/x86/benchmark
-	mkdir $(OBJECT_DIR)/arch/x86/kernel
-	mkdir $(OBJECT_DIR)/arch/x86/machine
-	mkdir $(OBJECT_DIR)/arch/x86/model
-	mkdir $(OBJECT_DIR)/arch/x86/smp
-	mkdir $(OBJECT_DIR)/arch/x86/api
-	mkdir $(OBJECT_DIR)/benchmark
-	mkdir $(OBJECT_DIR)/machine
-	mkdir $(OBJECT_DIR)/model
-	mkdir $(OBJECT_DIR)/smp
+	mkdir -p $(OBJECT_DIR)
+	mkdir -p $(OBJECT_DIR)/api
+	mkdir -p $(OBJECT_DIR)/object
+	mkdir -p $(OBJECT_DIR)/config
+	mkdir -p $(OBJECT_DIR)/plat
+	mkdir -p $(OBJECT_DIR)/plat/pc99
+	mkdir -p $(OBJECT_DIR)/plat/pc99/machine
+	mkdir -p $(OBJECT_DIR)/fastpath
+	mkdir -p $(OBJECT_DIR)/kernel
+	mkdir -p $(OBJECT_DIR)/arch
+	mkdir -p $(OBJECT_DIR)/arch/x86
+	mkdir -p $(OBJECT_DIR)/arch/x86/64
+	mkdir -p $(OBJECT_DIR)/arch/x86/64/kernel
+	mkdir -p $(OBJECT_DIR)/arch/x86/64/object
+	mkdir -p $(OBJECT_DIR)/arch/x86/64/machine
+	mkdir -p $(OBJECT_DIR)/arch/x86/64/model
+	mkdir -p $(OBJECT_DIR)/arch/x86/64/smp
+	mkdir -p $(OBJECT_DIR)/arch/x86/object
+	mkdir -p $(OBJECT_DIR)/arch/x86/benchmark
+	mkdir -p $(OBJECT_DIR)/arch/x86/kernel
+	mkdir -p $(OBJECT_DIR)/arch/x86/machine
+	mkdir -p $(OBJECT_DIR)/arch/x86/model
+	mkdir -p $(OBJECT_DIR)/arch/x86/smp
+	mkdir -p $(OBJECT_DIR)/arch/x86/api
+	mkdir -p $(OBJECT_DIR)/benchmark
+	mkdir -p $(OBJECT_DIR)/machine
+	mkdir -p $(OBJECT_DIR)/model
+	mkdir -p $(OBJECT_DIR)/smp
 
 $(OBJECT_DIR)/inlines.o: src/inlines.c
 	$(CC) $(CFLAGS) $(INCLUDE) src/inlines.c -c -o $(OBJECT_DIR)/inlines.o
@@ -208,7 +207,7 @@ RUST:
 
 kernel.elf: $(OBJECTS) RUST
 	$(CPP) $(INCLUDE) src/plat/pc99/linker.lds -o lds.tmp -P -DCONFIG_ARCH_X86_64
-	$(LD) $(LDFLAGS) $(OBJECTS) rust/sel4-rust/target/debug/libsel4_rust.a -T lds.tmp -o kernel.elf
+	$(LD) $(LDFLAGS) $(OBJECTS) rust/sel4-rust/target/debug/libsel4_rust.a -T lds.tmp -o kernel.elf 
 
 kernel: kernel.elf
 	objcopy -O elf32-i386 kernel.elf kernel

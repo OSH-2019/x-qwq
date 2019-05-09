@@ -80,6 +80,24 @@ memcpy(void* ptr_dst, const void* ptr_src, unsigned long n)
     return ptr_dst;
 }
 
+int VISIBLE
+memcmp(const void* s1, const void* s2, unsigned long n)
+{
+    int res;
+    while (n != 0) {
+        char a0 = ((const char*)s1)[0];
+        char b0 = ((const char*)s2)[0];
+        s1 += 1;
+        s2 += 1;
+        res = a0 - b0;
+        if (res != 0) {
+            return res;
+        }
+        n -= 1;
+    }
+    return 0;
+}
+
 int PURE
 strncmp(const char* s1, const char* s2, int n)
 {
