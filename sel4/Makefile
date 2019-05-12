@@ -206,7 +206,7 @@ RUST:
 	cd rust/sel4-rust && cargo build
 
 kernel.elf: $(OBJECTS) RUST
-	$(CPP) $(INCLUDE) src/plat/pc99/linker.lds -o lds.tmp -P -DCONFIG_ARCH_X86_64
+	$(CPP) $(INCLUDE) src/plat/pc99/linker.lds -o lds.tmp -P -DCONFIG_ARCH_X86_64 -DHAVE_AUTOCONF
 	$(LD) $(LDFLAGS) $(OBJECTS) rust/sel4-rust/target/debug/libsel4_rust.a -T lds.tmp -o kernel.elf 
 
 kernel: kernel.elf
