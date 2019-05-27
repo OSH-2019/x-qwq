@@ -233,44 +233,44 @@ decodeUntypedInvocation(word_t invLabel, word_t length, cte_t *slot,
                                 slots, deviceMemory);
 }
 
-/*static */exception_t
-resetUntypedCap(cte_t *srcSlot)
-{
-    cap_t prev_cap = srcSlot->cap;
-    word_t block_size = cap_untyped_cap_get_capBlockSize(prev_cap);
-    void *regionBase = WORD_PTR(cap_untyped_cap_get_capPtr(prev_cap));
-    int chunk = CONFIG_RESET_CHUNK_BITS;
-    word_t offset = FREE_INDEX_TO_OFFSET(cap_untyped_cap_get_capFreeIndex(prev_cap));
-    exception_t status;
-    bool_t deviceMemory = cap_untyped_cap_get_capIsDevice(prev_cap);
-
-    if (offset == 0) {
-        return EXCEPTION_NONE;
-    }
-
-    /** AUXUPD: "(True, typ_region_bytes (ptr_val \<acute>regionBase)
-        (unat \<acute>block_size))" */
-    /** GHOSTUPD: "(True, gs_clear_region (ptr_val \<acute>regionBase)
-        (unat \<acute>block_size))" */
-
-    if (deviceMemory || block_size < chunk) {
-        if (! deviceMemory) {
-            clearMemory(regionBase, block_size);
-        }
-        srcSlot->cap = cap_untyped_cap_set_capFreeIndex(prev_cap, 0);
-    } else {
-        for (offset = ROUND_DOWN(offset - 1, chunk);
-                offset != - BIT (chunk); offset -= BIT (chunk)) {
-            clearMemory(GET_OFFSET_FREE_PTR(regionBase, offset), chunk);
-            srcSlot->cap = cap_untyped_cap_set_capFreeIndex(prev_cap, OFFSET_TO_FREE_INDEX(offset));
-            status = preemptionPoint();
-            if (status != EXCEPTION_NONE) {
-                return status;
-            }
-        }
-    }
-    return EXCEPTION_NONE;
-}
+///*static */exception_t
+//resetUntypedCap(cte_t *srcSlot)
+//{
+//    cap_t prev_cap = srcSlot->cap;
+//    word_t block_size = cap_untyped_cap_get_capBlockSize(prev_cap);
+//    void *regionBase = WORD_PTR(cap_untyped_cap_get_capPtr(prev_cap));
+//    int chunk = CONFIG_RESET_CHUNK_BITS;
+//    word_t offset = FREE_INDEX_TO_OFFSET(cap_untyped_cap_get_capFreeIndex(prev_cap));
+//    exception_t status;
+//    bool_t deviceMemory = cap_untyped_cap_get_capIsDevice(prev_cap);
+//
+//    if (offset == 0) {
+//        return EXCEPTION_NONE;
+//    }
+//
+//    /** AUXUPD: "(True, typ_region_bytes (ptr_val \<acute>regionBase)
+//        (unat \<acute>block_size))" */
+//    /** GHOSTUPD: "(True, gs_clear_region (ptr_val \<acute>regionBase)
+//        (unat \<acute>block_size))" */
+//
+//    if (deviceMemory || block_size < chunk) {
+//        if (! deviceMemory) {
+//            clearMemory(regionBase, block_size);
+//        }
+//        srcSlot->cap = cap_untyped_cap_set_capFreeIndex(prev_cap, 0);
+//    } else {
+//        for (offset = ROUND_DOWN(offset - 1, chunk);
+//                offset != - BIT (chunk); offset -= BIT (chunk)) {
+//            clearMemory(GET_OFFSET_FREE_PTR(regionBase, offset), chunk);
+//            srcSlot->cap = cap_untyped_cap_set_capFreeIndex(prev_cap, OFFSET_TO_FREE_INDEX(offset));
+//            status = preemptionPoint();
+//            if (status != EXCEPTION_NONE) {
+//                return status;
+//            }
+//        }
+//    }
+//    return EXCEPTION_NONE;
+//}
 
 //exception_t
 //invokeUntyped_Retype(cte_t *srcSlot,

@@ -36,3 +36,11 @@ pub fn cap_untyped_cap_set_capFreeIndex(mut cap: cap_t, v64: u64) -> cap_t {
 pub fn cap_untyped_cap_get_capFreeIndex(cap: cap_t) -> u64 {
     (cap.words[1] & 0xffffffffffff0000u64) >> 16
 }
+
+pub fn cap_untyped_cap_get_capBlockSize(cap: cap_t) -> u64 {
+    cap.words[1] & 0x3fu64
+}
+
+pub fn cap_untyped_cap_get_capIsDevice(cap: cap_t) -> u64 {
+    (cap.words[1] & 0x40u64) >> 6
+}
