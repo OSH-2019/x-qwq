@@ -233,7 +233,7 @@ decodeUntypedInvocation(word_t invLabel, word_t length, cte_t *slot,
                                 slots, deviceMemory);
 }
 
-static exception_t
+/*static */exception_t
 resetUntypedCap(cte_t *srcSlot)
 {
     cap_t prev_cap = srcSlot->cap;
@@ -272,35 +272,35 @@ resetUntypedCap(cte_t *srcSlot)
     return EXCEPTION_NONE;
 }
 
-exception_t
-invokeUntyped_Retype(cte_t *srcSlot,
-                     bool_t reset, void* retypeBase,
-                     object_t newType, word_t userSize,
-                     slot_range_t destSlots, bool_t deviceMemory)
-{
-    word_t freeRef;
-    word_t totalObjectSize;
-    void *regionBase = WORD_PTR(cap_untyped_cap_get_capPtr(srcSlot->cap));
-    exception_t status;
-
-    freeRef = GET_FREE_REF(regionBase, cap_untyped_cap_get_capFreeIndex(srcSlot->cap));
-
-    if (reset) {
-        status = resetUntypedCap(srcSlot);
-        if (status != EXCEPTION_NONE) {
-            return status;
-        }
-    }
-
-    /* Update the amount of free space left in this untyped cap. */
-    totalObjectSize = destSlots.length << getObjectSize(newType, userSize);
-    freeRef = (word_t)retypeBase + totalObjectSize;
-    srcSlot->cap = cap_untyped_cap_set_capFreeIndex(srcSlot->cap,
-                                                    GET_FREE_INDEX(regionBase, freeRef));
-
-    /* Create new objects and caps. */
-    createNewObjects(newType, srcSlot, destSlots, retypeBase, userSize,
-                     deviceMemory);
-
-    return EXCEPTION_NONE;
-}
+//exception_t
+//invokeUntyped_Retype(cte_t *srcSlot,
+//                     bool_t reset, void* retypeBase,
+//                     object_t newType, word_t userSize,
+//                     slot_range_t destSlots, bool_t deviceMemory)
+//{
+//    word_t freeRef;
+//    word_t totalObjectSize;
+//    void *regionBase = WORD_PTR(cap_untyped_cap_get_capPtr(srcSlot->cap));
+//    exception_t status;
+//
+//    freeRef = GET_FREE_REF(regionBase, cap_untyped_cap_get_capFreeIndex(srcSlot->cap));
+//
+//    if (reset) {
+//        status = resetUntypedCap(srcSlot);
+//        if (status != EXCEPTION_NONE) {
+//            return status;
+//        }
+//    }
+//
+//    /* Update the amount of free space left in this untyped cap. */
+//    totalObjectSize = destSlots.length << getObjectSize(newType, userSize);
+//    freeRef = (word_t)retypeBase + totalObjectSize;
+//    srcSlot->cap = cap_untyped_cap_set_capFreeIndex(srcSlot->cap,
+//                                                    GET_FREE_INDEX(regionBase, freeRef));
+//
+//    /* Create new objects and caps. */
+//    createNewObjects(newType, srcSlot, destSlots, retypeBase, userSize,
+//                     deviceMemory);
+//
+//    return EXCEPTION_NONE;
+//}

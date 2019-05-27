@@ -12,3 +12,6 @@ panic = "abort"
 
 [lib]
 crate-type = ["staticlib"]
+
+[features]
+smp = []
