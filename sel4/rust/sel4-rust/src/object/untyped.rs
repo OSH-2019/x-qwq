@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 
 use crate::object::cnode::*;
-use crate::structures::*;
+use crate::structures::cte_t;
+use crate::object::arch_structures::*;
 
 extern "C" {
     fn getObjectSize(t: u64, userObjSize: u64) -> u64;
@@ -65,6 +66,8 @@ unsafe fn resetUntypedCap(srcSlot: *mut cte_t) -> u64 {
     0
 }
 
+#[allow(unused_assignments)]
+#[allow(unused_attributes)]
 #[no_mangle] pub unsafe extern "C" fn
 invokeUntyped_Retype(srcSlot: *mut cte_t,
                      reset: u64, retypeBase: u64,
