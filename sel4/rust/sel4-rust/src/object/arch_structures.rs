@@ -7,8 +7,21 @@ use crate::types::bool_t;
 use crate::types::word_t;
 use crate::structures::cap_t;
 use crate::structures::cap_tag_t;
+use crate::structures::thread_state_t;
 
 //对应generated/arch/object/structures_gen.h中的部分内容
+#[repr(C)]
+pub struct pde{
+    words:[u64;1]
+}
+pub type pde_t=pde;
+
+#[repr(C)]
+pub struct pte{
+    words:[u64;1]
+}
+pub type pte_t=pte;
+
 const cap_zombie_cap:u64=18;
 #[inline]
 pub fn cap_zombie_cap_new(capZombieID:u64, capZombieType:u64)->cap_t{
@@ -65,7 +78,7 @@ pub fn cap_notification_cap_get_capNtfnBadge(cap:cap_t)->u64{
     cap.words[1] & 0xffffffffffffffffu64
 }
 
-//对应generated/arch/object/structures_gen.h，这些是从pdl的structures.rs搬来的……
+//对应generated/arch/object/structures_gen.h
 pub fn cap_untyped_cap_get_capPtr(cap: cap_t) -> u64 {
     let mut ret = cap.words[0] & 0xffffffffffffu64;
     if ret & (1u64 << 47) != 0 {
@@ -87,6 +100,15 @@ pub fn cap_untyped_cap_get_capBlockSize(cap: cap_t) -> u64 {
 }
 pub fn cap_untyped_cap_get_capIsDevice(cap: cap_t) -> u64 {
     (cap.words[1] & 0x40u64) >> 6
+}
+
+pub fn thread_state_get_tsType(thread_state:&thread_state_t)->u64{
+    let ret:u64= thread_state.words[0] & 0xfu64;
+    ret
+}
+pub fn thread_state_ptr_set_tsType(thread_state_ptr:&mut thread_state_t,v64:u64){
+    thread_state_ptr.words[0] &= !0xfu64;
+    thread_state_ptr.words[0] |= v64 & 0xf;
 }
 
 //对应include/arch/x86/arch/machine/registerset.h中的部分内容

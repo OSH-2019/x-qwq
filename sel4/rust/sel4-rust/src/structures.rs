@@ -115,7 +115,7 @@ fn cap_zombie_cap_set_capZombieNumber(cap:cap_t,n:word_t)->cap_t{
 
 //线程相关
 #[repr(C)]
-enum _thread_state {
+pub enum _thread_state {
     ThreadState_Inactive = 0,
     ThreadState_Running,
     ThreadState_Restart,
@@ -125,7 +125,7 @@ enum _thread_state {
     ThreadState_BlockedOnNotification,
     ThreadState_IdleThreadState
 }
-type _thread_state_t=word_t;
+pub type _thread_state_t=word_t;
 
 #[repr(C)]
 enum tcb_cnode_index {
@@ -171,8 +171,8 @@ fn vmAttributesFromWord(w:word_t)->vm_attributes_t{
 
 //TCB相关
 #[repr(C)]
-struct thread_state_t{
-    words:[u64;3]
+pub struct thread_state_t{
+    pub words:[u64;3]
 }
 
 #[repr(C)]
@@ -193,7 +193,7 @@ struct lookup_fault_t{
 #[repr(C)]
 pub struct tcb_t {
     tcbArch: arch_tcb_t,
-    tcbState: thread_state_t,
+    pub tcbState: thread_state_t,
     tcbBoundNotification: *mut notification_t,
     tcbFault: seL4_Fault_t,
     tcbLookupFailure: lookup_fault_t,

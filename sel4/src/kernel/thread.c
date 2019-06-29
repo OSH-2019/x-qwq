@@ -22,6 +22,8 @@
 #include <machine/registerset.h>
 #include <linker.h>
 
+//修改的函数会写在thread.rs里
+
 extra_caps_t current_extra_caps;
 
 static seL4_MessageInfo_t
@@ -29,6 +31,8 @@ transferCaps(seL4_MessageInfo_t info, extra_caps_t caps,
              endpoint_t *endpoint, tcb_t *receiver,
              word_t *receiveBuffer);
 
+extern bool_t isBlocked(const tcb_t *thread);
+/*
 static inline bool_t PURE
 isBlocked(const tcb_t *thread)
 {
@@ -44,7 +48,9 @@ isBlocked(const tcb_t *thread)
         return false;
     }
 }
+*/
 
+//这个函数与boot有关，我先不改它= =
 BOOT_CODE void
 configureIdleThread(tcb_t *tcb)
 {
@@ -52,6 +58,8 @@ configureIdleThread(tcb_t *tcb)
     setThreadState(tcb, ThreadState_IdleThreadState);
 }
 
+extern void activateThread(void);
+/*
 void
 activateThread(void)
 {
@@ -79,7 +87,10 @@ activateThread(void)
         fail("Current thread is blocked");
     }
 }
+*/
 
+extern void suspend(tcb_t *target);
+/*
 void
 suspend(tcb_t *target)
 {
@@ -87,6 +98,7 @@ suspend(tcb_t *target)
     setThreadState(target, ThreadState_Inactive);
     tcbSchedDequeue(target);
 }
+*/
 
 void
 restart(tcb_t *target)
@@ -419,12 +431,14 @@ possibleSwitchTo(tcb_t* target)
     }
 }
 
+/*
 void
 setThreadState(tcb_t *tptr, _thread_state_t ts)
 {
     thread_state_ptr_set_tsType(&tptr->tcbState, ts);
     scheduleTCB(tptr);
 }
+*/
 
 void
 scheduleTCB(tcb_t *tptr)
