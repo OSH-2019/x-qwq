@@ -5,9 +5,9 @@
 use crate::types;
 use crate::types::word_t;
 use crate::object::arch_structures;
-use crate::object::arch_structures::arch_tcb_t;
+use crate::object::arch_structures::{arch_tcb_t,seL4_Fault_t};
 
-//以下对应include/object/structures.h中的内容
+//include/object/structures.h
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -38,9 +38,9 @@ enum irq_state {
 type irq_state_t=u32;
 
 #[repr(C)]
-struct dschedule {
-    domain:types::dom_t,
-    length:word_t
+pub struct dschedule {
+    pub domain:types::dom_t,
+    pub length:word_t
 }
 
 #[repr(C)]
@@ -115,7 +115,7 @@ fn cap_zombie_cap_set_capZombieNumber(cap:cap_t,n:word_t)->cap_t{
 
 //线程相关
 #[repr(C)]
-enum _thread_state {
+pub enum _thread_state {
     ThreadState_Inactive = 0,
     ThreadState_Running,
     ThreadState_Restart,
@@ -125,7 +125,7 @@ enum _thread_state {
     ThreadState_BlockedOnNotification,
     ThreadState_IdleThreadState
 }
-type _thread_state_t=word_t;
+pub type _thread_state_t=word_t;
 
 #[repr(C)]
 enum tcb_cnode_index {
@@ -171,18 +171,13 @@ fn vmAttributesFromWord(w:word_t)->vm_attributes_t{
 
 //TCB相关
 #[repr(C)]
-struct thread_state_t{
-    words:[u64;3]
+pub struct thread_state_t{
+    pub words:[u64;3]
 }
 
 #[repr(C)]
 struct notification_t{
     words:[u64;4]
-}
-
-#[repr(C)]
-struct seL4_Fault_t{
-    words:[u64;2]
 }
 
 #[repr(C)]
@@ -192,15 +187,15 @@ struct lookup_fault_t{
 
 #[repr(C)]
 pub struct tcb_t {
-    tcbArch: arch_tcb_t,
-    tcbState: thread_state_t,
+    pub tcbArch: arch_tcb_t,
+    pub tcbState: thread_state_t,
     tcbBoundNotification: *mut notification_t,
-    tcbFault: seL4_Fault_t,
+    pub tcbFault: seL4_Fault_t,
     tcbLookupFailure: lookup_fault_t,
-    tcbDomain: types::dom_t,
-    tcbMCP: types::prio_t,
-    tcbPriority: types::prio_t,
-    tcbTimeSlice: word_t,
+    pub tcbDomain: types::dom_t,
+    pub tcbMCP: types::prio_t,
+    pub tcbPriority: types::prio_t,
+    pub tcbTimeSlice: word_t,
     tcbFaultHandler: types::cptr_t,
     tcbIPCBuffer: word_t,
     
@@ -320,3 +315,11 @@ pub fn isCapRevocable(derivedCap:cap_t,srcCap:cap_t)->types::bool_t{
         _ => types::_bool::r#false as u64
     }
 }
+
+// include/object/tcb.h 因为不想翻译tcb.h整个文件所以就放这里了
+#[repr(C)]
+pub struct tcb_queue{
+    pub head:*mut tcb_t,
+    pub end:*mut tcb_t
+}
+pub type tcb_queue_t=tcb_queue;

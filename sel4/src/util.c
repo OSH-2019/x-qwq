@@ -13,6 +13,12 @@
 #include <util.h>
 #include <arch/types.h>
 
+//因为rust没有__buildin_clzl，所以这里加一个
+long CONST rust_clzl(unsigned long x)
+{
+    return __builtin_clzl(x);
+}
+
 /*
  * memzero needs a custom type that allows us to use a word
  * that has the aliasing properties of a char.

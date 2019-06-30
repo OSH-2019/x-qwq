@@ -22,6 +22,8 @@
 #include <machine/registerset.h>
 #include <linker.h>
 
+//修改的函数会写在thread.rs里
+
 extra_caps_t current_extra_caps;
 
 static seL4_MessageInfo_t
@@ -29,6 +31,7 @@ transferCaps(seL4_MessageInfo_t info, extra_caps_t caps,
              endpoint_t *endpoint, tcb_t *receiver,
              word_t *receiveBuffer);
 
+/*
 static inline bool_t PURE
 isBlocked(const tcb_t *thread)
 {
@@ -44,7 +47,9 @@ isBlocked(const tcb_t *thread)
         return false;
     }
 }
+*/
 
+//这个函数与boot有关，我先不改它= =
 BOOT_CODE void
 configureIdleThread(tcb_t *tcb)
 {
@@ -52,6 +57,7 @@ configureIdleThread(tcb_t *tcb)
     setThreadState(tcb, ThreadState_IdleThreadState);
 }
 
+/*
 void
 activateThread(void)
 {
@@ -79,7 +85,9 @@ activateThread(void)
         fail("Current thread is blocked");
     }
 }
+*/
 
+/*
 void
 suspend(tcb_t *target)
 {
@@ -87,7 +95,9 @@ suspend(tcb_t *target)
     setThreadState(target, ThreadState_Inactive);
     tcbSchedDequeue(target);
 }
+*/
 
+/*
 void
 restart(tcb_t *target)
 {
@@ -99,7 +109,9 @@ restart(tcb_t *target)
         possibleSwitchTo(target);
     }
 }
+*/
 
+/*
 void
 doIPCTransfer(tcb_t *sender, endpoint_t *endpoint, word_t badge,
               bool_t grant, tcb_t *receiver)
@@ -116,7 +128,9 @@ doIPCTransfer(tcb_t *sender, endpoint_t *endpoint, word_t badge,
         doFaultTransfer(badge, sender, receiver, receiveBuffer);
     }
 }
+*/
 
+/*
 void
 doReplyTransfer(tcb_t *sender, tcb_t *receiver, cte_t *slot)
 {
@@ -125,14 +139,17 @@ doReplyTransfer(tcb_t *sender, tcb_t *receiver, cte_t *slot)
 
     if (likely(seL4_Fault_get_seL4_FaultType(receiver->tcbFault) == seL4_Fault_NullFault)) {
         doIPCTransfer(sender, NULL, 0, true, receiver);
+*/
         /** GHOSTUPD: "(True, gs_set_assn cteDeleteOne_'proc (ucast cap_reply_cap))" */
+/*
         cteDeleteOne(slot);
         setThreadState(receiver, ThreadState_Running);
         possibleSwitchTo(receiver);
     } else {
         bool_t restart;
-
+*/
         /** GHOSTUPD: "(True, gs_set_assn cteDeleteOne_'proc (ucast cap_reply_cap))" */
+/*
         cteDeleteOne(slot);
         restart = handleFaultReply(receiver, sender);
         receiver->tcbFault = seL4_Fault_NullFault_new();
@@ -144,7 +161,9 @@ doReplyTransfer(tcb_t *sender, tcb_t *receiver, cte_t *slot)
         }
     }
 }
+*/
 
+/*
 void
 doNormalTransfer(tcb_t *sender, word_t *sendBuffer, endpoint_t *endpoint,
                  word_t badge, bool_t canGrant, tcb_t *receiver,
@@ -177,7 +196,9 @@ doNormalTransfer(tcb_t *sender, word_t *sendBuffer, endpoint_t *endpoint,
     setRegister(receiver, msgInfoRegister, wordFromMessageInfo(tag));
     setRegister(receiver, badgeRegister, badge);
 }
+*/
 
+/*
 void
 doFaultTransfer(word_t badge, tcb_t *sender, tcb_t *receiver,
                 word_t *receiverIPCBuffer)
@@ -191,6 +212,7 @@ doFaultTransfer(word_t badge, tcb_t *sender, tcb_t *receiver,
     setRegister(receiver, msgInfoRegister, wordFromMessageInfo(msgInfo));
     setRegister(receiver, badgeRegister, badge);
 }
+*/
 
 /* Like getReceiveSlots, this is specialised for single-cap transfer. */
 static seL4_MessageInfo_t
@@ -249,11 +271,15 @@ transferCaps(seL4_MessageInfo_t info, extra_caps_t caps,
     return seL4_MessageInfo_set_extraCaps(info, i);
 }
 
+/*
 void doNBRecvFailedTransfer(tcb_t *thread)
 {
+*/
     /* Set the badge register to 0 to indicate there was no message */
+/*
     setRegister(thread, badgeRegister, 0);
 }
+*/
 
 static void
 nextDomain(void)
@@ -276,6 +302,7 @@ scheduleChooseNewThread(void)
     chooseThread();
 }
 
+/*
 void
 schedule(void)
 {
@@ -292,23 +319,29 @@ schedule(void)
             scheduleChooseNewThread();
         } else {
             tcb_t *candidate = NODE_STATE(ksSchedulerAction);
+*/
             /* Avoid checking bitmap when ksCurThread is higher prio, to
              * match fast path.
              * Don't look at ksCurThread prio when it's idle, to respect
              * information flow in non-fastpath cases. */
+/*
             bool_t fastfail =
                 NODE_STATE(ksCurThread) == NODE_STATE(ksIdleThread)
                 || (candidate->tcbPriority < NODE_STATE(ksCurThread)->tcbPriority);
             if (fastfail &&
                     !isHighestPrio(ksCurDomain, candidate->tcbPriority)) {
                 SCHED_ENQUEUE(candidate);
+*/
                 /* we can't, need to reschedule */
+/*
                 NODE_STATE(ksSchedulerAction) = SchedulerAction_ChooseNewThread;
                 scheduleChooseNewThread();
             } else if (was_runnable && candidate->tcbPriority == NODE_STATE(ksCurThread)->tcbPriority) {
+*/
                 /* We append the candidate at the end of the scheduling queue, that way the
                  * current thread, that was enqueued at the start of the scheduling queue
                  * will get picked during chooseNewThread */
+/*
                 SCHED_APPEND(candidate);
                 NODE_STATE(ksSchedulerAction) = SchedulerAction_ChooseNewThread;
                 scheduleChooseNewThread();
@@ -322,9 +355,10 @@ schedule(void)
 #ifdef ENABLE_SMP_SUPPORT
     doMaskReschedule(ARCH_NODE_STATE(ipiReschedulePending));
     ARCH_NODE_STATE(ipiReschedulePending) = 0;
-#endif /* ENABLE_SMP_SUPPORT */
-}
+#endif*/ /* ENABLE_SMP_SUPPORT */
+//}
 
+/*
 void
 chooseThread(void)
 {
@@ -348,7 +382,9 @@ chooseThread(void)
         switchToIdleThread();
     }
 }
+*/
 
+/*
 void
 switchToThread(tcb_t *thread)
 {
@@ -359,7 +395,9 @@ switchToThread(tcb_t *thread)
     tcbSchedDequeue(thread);
     NODE_STATE(ksCurThread) = thread;
 }
+*/
 
+/*
 void
 switchToIdleThread(void)
 {
@@ -369,7 +407,9 @@ switchToIdleThread(void)
     Arch_switchToIdleThread();
     NODE_STATE(ksCurThread) = NODE_STATE(ksIdleThread);
 }
+*/
 
+/*
 void
 setDomain(tcb_t *tptr, dom_t dom)
 {
@@ -382,13 +422,17 @@ setDomain(tcb_t *tptr, dom_t dom)
         rescheduleRequired();
     }
 }
+*/
 
+/*
 void
 setMCPriority(tcb_t *tptr, prio_t mcp)
 {
     tptr->tcbMCP = mcp;
 }
+*/
 
+/*
 void
 setPriority(tcb_t *tptr, prio_t prio)
 {
@@ -399,7 +443,9 @@ setPriority(tcb_t *tptr, prio_t prio)
         rescheduleRequired();
     }
 }
+*/
 
+//这个函数有SMP_COND_STATEMENT不知道怎么翻译，先不改
 /* Note that this thread will possibly continue at the end of this kernel
  * entry. Do not queue it yet, since a queue+unqueue operation is wasteful
  * if it will be picked. Instead, it waits in the 'ksSchedulerAction' site
@@ -419,13 +465,16 @@ possibleSwitchTo(tcb_t* target)
     }
 }
 
+/*
 void
 setThreadState(tcb_t *tptr, _thread_state_t ts)
 {
     thread_state_ptr_set_tsType(&tptr->tcbState, ts);
     scheduleTCB(tptr);
 }
+*/
 
+/*
 void
 scheduleTCB(tcb_t *tptr)
 {
@@ -435,7 +484,9 @@ scheduleTCB(tcb_t *tptr)
         rescheduleRequired();
     }
 }
+*/
 
+/*
 void
 timerTick(void)
 {
@@ -457,7 +508,9 @@ timerTick(void)
         }
     }
 }
+*/
 
+/*
 void
 rescheduleRequired(void)
 {
@@ -467,4 +520,5 @@ rescheduleRequired(void)
     }
     NODE_STATE(ksSchedulerAction) = SchedulerAction_ChooseNewThread;
 }
+*/
 
