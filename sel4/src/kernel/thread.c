@@ -31,7 +31,6 @@ transferCaps(seL4_MessageInfo_t info, extra_caps_t caps,
              endpoint_t *endpoint, tcb_t *receiver,
              word_t *receiveBuffer);
 
-extern bool_t isBlocked(const tcb_t *thread);
 /*
 static inline bool_t PURE
 isBlocked(const tcb_t *thread)
@@ -58,7 +57,6 @@ configureIdleThread(tcb_t *tcb)
     setThreadState(tcb, ThreadState_IdleThreadState);
 }
 
-extern void activateThread(void);
 /*
 void
 activateThread(void)
@@ -89,7 +87,6 @@ activateThread(void)
 }
 */
 
-extern void suspend(tcb_t *target);
 /*
 void
 suspend(tcb_t *target)
@@ -100,6 +97,7 @@ suspend(tcb_t *target)
 }
 */
 
+/*
 void
 restart(tcb_t *target)
 {
@@ -111,7 +109,9 @@ restart(tcb_t *target)
         possibleSwitchTo(target);
     }
 }
+*/
 
+/*
 void
 doIPCTransfer(tcb_t *sender, endpoint_t *endpoint, word_t badge,
               bool_t grant, tcb_t *receiver)
@@ -128,7 +128,9 @@ doIPCTransfer(tcb_t *sender, endpoint_t *endpoint, word_t badge,
         doFaultTransfer(badge, sender, receiver, receiveBuffer);
     }
 }
+*/
 
+/*
 void
 doReplyTransfer(tcb_t *sender, tcb_t *receiver, cte_t *slot)
 {
@@ -137,14 +139,17 @@ doReplyTransfer(tcb_t *sender, tcb_t *receiver, cte_t *slot)
 
     if (likely(seL4_Fault_get_seL4_FaultType(receiver->tcbFault) == seL4_Fault_NullFault)) {
         doIPCTransfer(sender, NULL, 0, true, receiver);
+*/
         /** GHOSTUPD: "(True, gs_set_assn cteDeleteOne_'proc (ucast cap_reply_cap))" */
+/*
         cteDeleteOne(slot);
         setThreadState(receiver, ThreadState_Running);
         possibleSwitchTo(receiver);
     } else {
         bool_t restart;
-
+*/
         /** GHOSTUPD: "(True, gs_set_assn cteDeleteOne_'proc (ucast cap_reply_cap))" */
+/*
         cteDeleteOne(slot);
         restart = handleFaultReply(receiver, sender);
         receiver->tcbFault = seL4_Fault_NullFault_new();
@@ -156,7 +161,9 @@ doReplyTransfer(tcb_t *sender, tcb_t *receiver, cte_t *slot)
         }
     }
 }
+*/
 
+/*
 void
 doNormalTransfer(tcb_t *sender, word_t *sendBuffer, endpoint_t *endpoint,
                  word_t badge, bool_t canGrant, tcb_t *receiver,
@@ -189,7 +196,9 @@ doNormalTransfer(tcb_t *sender, word_t *sendBuffer, endpoint_t *endpoint,
     setRegister(receiver, msgInfoRegister, wordFromMessageInfo(tag));
     setRegister(receiver, badgeRegister, badge);
 }
+*/
 
+/*
 void
 doFaultTransfer(word_t badge, tcb_t *sender, tcb_t *receiver,
                 word_t *receiverIPCBuffer)
@@ -203,6 +212,7 @@ doFaultTransfer(word_t badge, tcb_t *sender, tcb_t *receiver,
     setRegister(receiver, msgInfoRegister, wordFromMessageInfo(msgInfo));
     setRegister(receiver, badgeRegister, badge);
 }
+*/
 
 /* Like getReceiveSlots, this is specialised for single-cap transfer. */
 static seL4_MessageInfo_t
@@ -261,11 +271,15 @@ transferCaps(seL4_MessageInfo_t info, extra_caps_t caps,
     return seL4_MessageInfo_set_extraCaps(info, i);
 }
 
+/*
 void doNBRecvFailedTransfer(tcb_t *thread)
 {
+*/
     /* Set the badge register to 0 to indicate there was no message */
+/*
     setRegister(thread, badgeRegister, 0);
 }
+*/
 
 static void
 nextDomain(void)
@@ -412,6 +426,7 @@ setPriority(tcb_t *tptr, prio_t prio)
     }
 }
 
+//这个函数有点奇怪，先不改
 /* Note that this thread will possibly continue at the end of this kernel
  * entry. Do not queue it yet, since a queue+unqueue operation is wasteful
  * if it will be picked. Instead, it waits in the 'ksSchedulerAction' site

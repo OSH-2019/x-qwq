@@ -10,6 +10,7 @@ pub mod model;
 pub mod types;
 pub mod structures;
 pub mod thread;
+pub mod registerset;
 
 #[allow(unused_attributes)]
 #[no_mangle] pub unsafe extern "C" fn rust_add(a: i32, b: i32) -> i32 {

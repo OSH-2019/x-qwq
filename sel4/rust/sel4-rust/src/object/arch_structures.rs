@@ -9,7 +9,7 @@ use crate::structures::cap_t;
 use crate::structures::cap_tag_t;
 use crate::structures::thread_state_t;
 
-//对应generated/arch/object/structures_gen.h中的部分内容
+//generated/arch/object/structures_gen.h
 #[repr(C)]
 pub struct pde{
     words:[u64;1]
@@ -59,6 +59,15 @@ pub fn cap_get_capType(cap:cap_t)->u64{
 }
 
 #[inline]
+pub fn cap_endpoint_cap_get_capEPPtr(cap:cap_t)->u64{
+    let mut ret:u64=cap.words[0] & 0xffffffffffffu64;
+    if (ret & (1u64 << 47))!=0 {
+        ret |= 0xffff000000000000;
+    }
+    ret
+}
+
+#[inline]
 pub fn isArchCap(cap:cap_t)->word_t{
     cap_get_capType(cap) % 2
 }
@@ -78,7 +87,6 @@ pub fn cap_notification_cap_get_capNtfnBadge(cap:cap_t)->u64{
     cap.words[1] & 0xffffffffffffffffu64
 }
 
-//对应generated/arch/object/structures_gen.h
 pub fn cap_untyped_cap_get_capPtr(cap: cap_t) -> u64 {
     let mut ret = cap.words[0] & 0xffffffffffffu64;
     if ret & (1u64 << 47) != 0 {
@@ -111,7 +119,28 @@ pub fn thread_state_ptr_set_tsType(thread_state_ptr:&mut thread_state_t,v64:u64)
     thread_state_ptr.words[0] |= v64 & 0xf;
 }
 
-//对应include/arch/x86/arch/machine/registerset.h中的部分内容
+#[repr(C)]
+pub struct endpoint{
+    words:[u64;2]
+}
+pub type endpoint_t=endpoint;
+
+#[repr(C)]
+pub struct seL4_Fault{
+    words:[u64;2]
+}
+pub type seL4_Fault_t=seL4_Fault;
+
+pub fn seL4_Fault_get_seL4_FaultType(seL4_Fault:&seL4_Fault_t)->u64{
+    seL4_Fault.words[0]&0x7u64
+}
+pub fn seL4_Fault_NullFault_new()->seL4_Fault_t{
+    seL4_Fault_t{
+        words:[0,0]
+    }
+}
+
+//include/arch/x86/arch/machine/registerset.h
 const CONFIG_XSAVE_SIZE:usize=512;
 #[repr(C)]
 struct user_fpu_state_t{
@@ -120,12 +149,12 @@ struct user_fpu_state_t{
 
 const n_contextRegisters:usize=23;
 #[repr(C)]
-struct user_context_t{
+pub struct user_context_t{
     fpuState: user_fpu_state_t,
-    registers: [word_t;n_contextRegisters]
+    pub registers: [word_t;n_contextRegisters]
 }
 
-//对应include/arch/x86/arch/machine/hardware.h中的部分内容
+//include/arch/x86/arch/machine/hardware.h
 #[repr(C)]
 enum vm_page_size {
     X86_SmallPage,
@@ -151,7 +180,7 @@ fn pageBitsForSize(pagesize:vm_page_size_t)->word_t{
     }
 }
 
-//对应include/arch/x86/arch/64/mode/object/structures.h中的部分内容
+//include/arch/x86/arch/64/mode/object/structures.h
 const seL4_PML4Bits:u64=12;
 const seL4_PDPTBits:u64=12;
 
@@ -179,10 +208,10 @@ fn cap_get_modeCapIsPhysical(cap:cap_t)->bool_t{
 }
 
 
-//对应include/arch/x86/arch/object/structures.h中的部分内容
+//include/arch/x86/arch/object/structures.h
 #[repr(C)]
 pub struct arch_tcb_t{
-    tcbContext: user_context_t
+    pub tcbContext: user_context_t
 }
 
 const seL4_PageTableBits:u64=12;

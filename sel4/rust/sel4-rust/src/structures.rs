@@ -5,7 +5,7 @@
 use crate::types;
 use crate::types::word_t;
 use crate::object::arch_structures;
-use crate::object::arch_structures::arch_tcb_t;
+use crate::object::arch_structures::{arch_tcb_t,seL4_Fault_t};
 
 //以下对应include/object/structures.h中的内容
 
@@ -181,23 +181,18 @@ struct notification_t{
 }
 
 #[repr(C)]
-struct seL4_Fault_t{
-    words:[u64;2]
-}
-
-#[repr(C)]
 struct lookup_fault_t{
     words:[u64;2]
 }
 
 #[repr(C)]
 pub struct tcb_t {
-    tcbArch: arch_tcb_t,
+    pub tcbArch: arch_tcb_t,
     pub tcbState: thread_state_t,
     tcbBoundNotification: *mut notification_t,
-    tcbFault: seL4_Fault_t,
+    pub tcbFault: seL4_Fault_t,
     tcbLookupFailure: lookup_fault_t,
-    tcbDomain: types::dom_t,
+    pub tcbDomain: types::dom_t,
     tcbMCP: types::prio_t,
     tcbPriority: types::prio_t,
     tcbTimeSlice: word_t,
