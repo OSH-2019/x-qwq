@@ -302,6 +302,7 @@ scheduleChooseNewThread(void)
     chooseThread();
 }
 
+/*
 void
 schedule(void)
 {
@@ -318,23 +319,29 @@ schedule(void)
             scheduleChooseNewThread();
         } else {
             tcb_t *candidate = NODE_STATE(ksSchedulerAction);
+*/
             /* Avoid checking bitmap when ksCurThread is higher prio, to
              * match fast path.
              * Don't look at ksCurThread prio when it's idle, to respect
              * information flow in non-fastpath cases. */
+/*
             bool_t fastfail =
                 NODE_STATE(ksCurThread) == NODE_STATE(ksIdleThread)
                 || (candidate->tcbPriority < NODE_STATE(ksCurThread)->tcbPriority);
             if (fastfail &&
                     !isHighestPrio(ksCurDomain, candidate->tcbPriority)) {
                 SCHED_ENQUEUE(candidate);
+*/
                 /* we can't, need to reschedule */
+/*
                 NODE_STATE(ksSchedulerAction) = SchedulerAction_ChooseNewThread;
                 scheduleChooseNewThread();
             } else if (was_runnable && candidate->tcbPriority == NODE_STATE(ksCurThread)->tcbPriority) {
+*/
                 /* We append the candidate at the end of the scheduling queue, that way the
                  * current thread, that was enqueued at the start of the scheduling queue
                  * will get picked during chooseNewThread */
+/*
                 SCHED_APPEND(candidate);
                 NODE_STATE(ksSchedulerAction) = SchedulerAction_ChooseNewThread;
                 scheduleChooseNewThread();
@@ -348,9 +355,10 @@ schedule(void)
 #ifdef ENABLE_SMP_SUPPORT
     doMaskReschedule(ARCH_NODE_STATE(ipiReschedulePending));
     ARCH_NODE_STATE(ipiReschedulePending) = 0;
-#endif /* ENABLE_SMP_SUPPORT */
-}
+#endif*/ /* ENABLE_SMP_SUPPORT */
+//}
 
+/*
 void
 chooseThread(void)
 {
@@ -374,7 +382,9 @@ chooseThread(void)
         switchToIdleThread();
     }
 }
+*/
 
+/*
 void
 switchToThread(tcb_t *thread)
 {
@@ -385,7 +395,9 @@ switchToThread(tcb_t *thread)
     tcbSchedDequeue(thread);
     NODE_STATE(ksCurThread) = thread;
 }
+*/
 
+/*
 void
 switchToIdleThread(void)
 {
@@ -395,7 +407,9 @@ switchToIdleThread(void)
     Arch_switchToIdleThread();
     NODE_STATE(ksCurThread) = NODE_STATE(ksIdleThread);
 }
+*/
 
+/*
 void
 setDomain(tcb_t *tptr, dom_t dom)
 {
@@ -408,13 +422,17 @@ setDomain(tcb_t *tptr, dom_t dom)
         rescheduleRequired();
     }
 }
+*/
 
+/*
 void
 setMCPriority(tcb_t *tptr, prio_t mcp)
 {
     tptr->tcbMCP = mcp;
 }
+*/
 
+/*
 void
 setPriority(tcb_t *tptr, prio_t prio)
 {
@@ -425,8 +443,9 @@ setPriority(tcb_t *tptr, prio_t prio)
         rescheduleRequired();
     }
 }
+*/
 
-//这个函数有点奇怪，先不改
+//这个函数有SMP_COND_STATEMENT不知道怎么翻译，先不改
 /* Note that this thread will possibly continue at the end of this kernel
  * entry. Do not queue it yet, since a queue+unqueue operation is wasteful
  * if it will be picked. Instead, it waits in the 'ksSchedulerAction' site
@@ -455,6 +474,7 @@ setThreadState(tcb_t *tptr, _thread_state_t ts)
 }
 */
 
+/*
 void
 scheduleTCB(tcb_t *tptr)
 {
@@ -464,7 +484,9 @@ scheduleTCB(tcb_t *tptr)
         rescheduleRequired();
     }
 }
+*/
 
+/*
 void
 timerTick(void)
 {
@@ -486,7 +508,9 @@ timerTick(void)
         }
     }
 }
+*/
 
+/*
 void
 rescheduleRequired(void)
 {
@@ -496,4 +520,5 @@ rescheduleRequired(void)
     }
     NODE_STATE(ksSchedulerAction) = SchedulerAction_ChooseNewThread;
 }
+*/
 

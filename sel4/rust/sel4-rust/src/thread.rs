@@ -5,20 +5,31 @@
 #![allow(unused_attributes)]
 
 use crate::types::*;
-use crate::structures::{tcb_t,_thread_state,_thread_state_t,cte_t,cap_t,cap_tag_t};
+use crate::structures::{tcb_t,dschedule,tcb_queue_t,_thread_state,_thread_state_t,cte_t,cap_t,cap_tag_t};
 use crate::object::arch_structures::*;
-use crate::model::statedata::*;
 use crate::registerset::*;
-
-//src/kernel/thread.c
 
 extern "C"{
     static mut current_extra_caps:extra_caps_t;
     fn possibleSwitchTo(target:*mut tcb_t);
     //src/model/statedata.c
+    static mut ksReadyQueues:[tcb_queue_t;256];
+    static mut ksReadyQueuesL1Bitmap:[word_t;1];
+    static mut ksReadyQueuesL2Bitmap:[[word_t;1];L2_BITMAP_SIZE];
+    static mut ksCurThread:*mut tcb_t;
+    static mut ksIdleThread:*mut tcb_t;
+    static mut ksSchedulerAction:*mut tcb_t;
     static mut ksCurDomain:dom_t;
+    static mut ksDomainTime:word_t;
+    static mut ksDomScheduleIdx:word_t;
+    static mut ksWorkUnitsCompleted:word_t;
+    //src/config/default_domain.c
+    static ksDomSchedule:[dschedule;1];
+    static ksDomScheduleLength:word_t;
     //src/arch/x86/64/kernel/thread.c
     fn Arch_activateIdleThread(tcb:*mut tcb_t); //这个函数其实是空的
+    fn Arch_switchToThread(tcb:*mut tcb_t);
+    fn Arch_switchToIdleThread();
     //src/object/cnode.c
     fn setupReplyMaster(thread:*mut tcb_t);
     fn cteDeleteOne(slot:*mut cte_t);
@@ -26,10 +37,10 @@ extern "C"{
     fn cteInsert(newCap:cap_t,srcSlot:*mut cte_t,destSlot:*mut cte_t);
     //src/object/endpoint.c
     fn cancelIPC(tptr:*mut tcb_t);
-    fn scheduleTCB(tptr:*mut tcb_t);
     //src/kernel/tcb.c
     fn tcbSchedDequeue(tcb:*mut tcb_t);
     fn tcbSchedEnqueue(tcb:*mut tcb_t);
+    fn tcbSchedAppend(tcb:*mut tcb_t);
     fn lookupExtraCaps(thread:*mut tcb_t,bufferPtr:*mut word_t,info:seL4_MessageInfo_t)->exception_t;
     fn copyMRs(sender:*mut tcb_t,sendBuf:*mut word_t,receiver:*mut tcb_t,recvBuf:*mut word_t,n:word_t)->word_t;
     fn setExtraBadge(bufferPtr:*mut word_t,badge:word_t,i:word_t);
@@ -43,7 +54,56 @@ extern "C"{
     fn setMRs_fault(sender:*mut tcb_t,receiver:*mut tcb_t,receiveIPCBuffer:*mut word_t)->word_t;
     //src/object/objecttype.c
     fn deriveCap(slot:*mut cte_t,cap:cap_t)->deriveCap_ret_t;
+    //src/util.c
+    fn rust_clzl(x:u64)->i64;
 }
+
+//include/kernel/thread.h
+
+#[allow(unused_variables)]
+#[inline]
+fn read_queues_index(dom:word_t,prio:word_t)->word_t{
+    prio
+}
+
+#[inline]
+fn l1index_to_prio(l1index:word_t)->word_t{
+    l1index<<6
+}
+
+#[inline]
+fn isRunnable(thread:*const tcb_t)->bool_t{
+    let state=unsafe{
+        thread_state_get_tsType(&(*thread).tcbState)
+    };
+    if state == _thread_state::ThreadState_Running as u64
+        || state == _thread_state::ThreadState_Restart as u64 {
+        true as bool_t
+    }else{
+        false as bool_t
+    }
+}
+
+const L2_BITMAP_SIZE:usize=(256+(1<<6)-1)/(1<<6);
+#[inline]
+fn invert_l1index(l1index:word_t)->word_t{
+    L2_BITMAP_SIZE as u64 - 1 - l1index
+}
+
+#[inline]
+unsafe fn getHighestPrio(dom:word_t)->prio_t{
+    let l1index:word_t = (wordBits as i64 - 1 - rust_clzl(node_state!(ksReadyQueuesL1Bitmap)[dom as usize]) )as u64;
+    let l1index_inverted:word_t = invert_l1index(l1index);
+    let l2index:word_t = (wordBits as i64 - 1 - rust_clzl(node_state!(ksReadyQueuesL2Bitmap)[dom as usize][l1index_inverted as usize]) )as u64;
+    l1index_to_prio(l1index) | l2index
+}
+
+#[inline]
+unsafe fn isHighestPrio(dom:word_t,prio:prio_t)->bool_t{
+    (node_state!(ksReadyQueuesL1Bitmap)[dom as usize] == 0 || prio >= getHighestPrio(dom)) as u64
+}
+
+//src/kernel/thread.c
 
 //线程控制相关函数
 
@@ -224,7 +284,114 @@ pub unsafe extern "C" fn doNBRecvFailedTransfer(thread:*mut tcb_t){
     setRegister(thread, badgeRegister, 0);
 }
 
-//
+//调度相关
+
+pub unsafe fn nextDomain(){
+    ksDomScheduleIdx+=1;
+    if ksDomScheduleIdx >= ksDomScheduleLength {
+        ksDomScheduleIdx = 0;
+    }
+    ksWorkUnitsCompleted = 0;
+    ksCurDomain = ksDomSchedule[ksDomScheduleIdx as usize].domain;
+    ksDomainTime = ksDomSchedule[ksDomScheduleIdx as usize].length;
+}
+
+pub unsafe fn scheduleChooseNewThread(){
+    if ksDomainTime == 0 {
+        nextDomain();
+    }
+    chooseThread();
+}
+
+const SchedulerAction_ResumeCurrentThread:*mut tcb_t=0 as *mut tcb_t;
+const SchedulerAction_ChooseNewThread:*mut tcb_t=1 as *mut tcb_t;
+#[no_mangle]
+pub unsafe extern "C" fn schedule(){
+    if node_state!(ksSchedulerAction) != SchedulerAction_ResumeCurrentThread {
+        let was_runnable:bool;
+        if isRunnable(node_state!(ksCurThread)) !=0 {
+            was_runnable = true;
+            tcbSchedEnqueue(node_state!(ksCurThread));
+        }else{
+            was_runnable = false;
+        }
+        
+        if node_state!(ksSchedulerAction) == SchedulerAction_ChooseNewThread {
+            scheduleChooseNewThread();
+        }else{
+            let candidate:*mut tcb_t=node_state!(ksSchedulerAction);
+            let fastfail= 
+                (node_state!(ksCurThread) == node_state!(ksIdleThread))
+                || ((*candidate).tcbPriority < (*node_state!(ksCurThread)).tcbPriority);
+            if fastfail && (isHighestPrio(ksCurDomain, (*candidate).tcbPriority)==0) {
+                tcbSchedEnqueue(candidate);
+                node_state!(ksSchedulerAction) = SchedulerAction_ChooseNewThread;
+                scheduleChooseNewThread();
+            }else if was_runnable && ((*candidate).tcbPriority == (*node_state!(ksCurThread)).tcbPriority){
+                tcbSchedAppend(candidate);
+                node_state!(ksSchedulerAction) = SchedulerAction_ChooseNewThread;
+                scheduleChooseNewThread();
+            }else{
+                switchToThread(candidate);
+            }
+        }
+    }
+    node_state!(ksSchedulerAction) = SchedulerAction_ResumeCurrentThread;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn chooseThread(){
+    let dom:word_t = 0;
+    if node_state!(ksReadyQueuesL1Bitmap)[dom as usize]!=0 {
+        let prio:word_t = getHighestPrio(dom);
+        let thread:*mut tcb_t = node_state!(ksReadyQueues)[read_queues_index(dom,prio) as usize].head;
+        switchToThread(thread);
+    }else{
+        switchToIdleThread();
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn switchToThread(thread:*mut tcb_t){
+    Arch_switchToThread(thread);
+    tcbSchedDequeue(thread);
+    node_state!(ksCurThread) = thread;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn switchToIdleThread(){
+    Arch_switchToIdleThread();
+    node_state!(ksCurThread) = node_state!(ksIdleThread);
+}
+
+//设置状态相关
+
+#[no_mangle]
+pub unsafe extern "C" fn setDomain(tptr:*mut tcb_t,dom:dom_t){
+    tcbSchedDequeue(tptr);
+    (*tptr).tcbDomain = dom;
+    if isRunnable(tptr) !=0 {
+        tcbSchedEnqueue(tptr);
+    }
+    if tptr == node_state!(ksCurThread) {
+        rescheduleRequired();
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn setMCPriority(tptr:*mut tcb_t,mcp:prio_t){
+    (*tptr).tcbMCP = mcp;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn setPriority(tptr:*mut tcb_t,prio:prio_t){
+    tcbSchedDequeue(tptr);
+    (*tptr).tcbPriority = prio;
+    if isRunnable(tptr) !=0 {
+        tcbSchedEnqueue(tptr);
+        rescheduleRequired();
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn setThreadState(tptr:*mut tcb_t,ts:_thread_state_t){
@@ -233,3 +400,34 @@ pub unsafe extern "C" fn setThreadState(tptr:*mut tcb_t,ts:_thread_state_t){
     scheduleTCB(tptr);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn scheduleTCB(tptr:*mut tcb_t){
+    if tptr == node_state!(ksCurThread)
+        && node_state!(ksSchedulerAction) == SchedulerAction_ResumeCurrentThread
+        && (isRunnable(tptr)==0) {
+        rescheduleRequired();
+    }
+}
+
+const CONFIG_TIME_SLICE:u64=5;
+#[no_mangle]
+pub unsafe extern "C" fn timerTick(){
+    if thread_state_get_tsType(&(*node_state!(ksCurThread)).tcbState) == _thread_state::ThreadState_Running as u64 {
+        if (*node_state!(ksCurThread)).tcbTimeSlice >1 {
+            (*node_state!(ksCurThread)).tcbTimeSlice -= 1;
+        }else{
+            (*node_state!(ksCurThread)).tcbTimeSlice = CONFIG_TIME_SLICE;
+            tcbSchedAppend(node_state!(ksCurThread));
+            rescheduleRequired();
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rescheduleRequired(){
+    if node_state!(ksSchedulerAction) != SchedulerAction_ResumeCurrentThread
+        && node_state!(ksSchedulerAction) != SchedulerAction_ChooseNewThread {
+        tcbSchedEnqueue(node_state!(ksSchedulerAction));
+    }
+    node_state!(ksSchedulerAction) = SchedulerAction_ChooseNewThread;
+}

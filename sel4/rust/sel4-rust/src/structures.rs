@@ -7,7 +7,7 @@ use crate::types::word_t;
 use crate::object::arch_structures;
 use crate::object::arch_structures::{arch_tcb_t,seL4_Fault_t};
 
-//以下对应include/object/structures.h中的内容
+//include/object/structures.h
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -38,9 +38,9 @@ enum irq_state {
 type irq_state_t=u32;
 
 #[repr(C)]
-struct dschedule {
-    domain:types::dom_t,
-    length:word_t
+pub struct dschedule {
+    pub domain:types::dom_t,
+    pub length:word_t
 }
 
 #[repr(C)]
@@ -193,9 +193,9 @@ pub struct tcb_t {
     pub tcbFault: seL4_Fault_t,
     tcbLookupFailure: lookup_fault_t,
     pub tcbDomain: types::dom_t,
-    tcbMCP: types::prio_t,
-    tcbPriority: types::prio_t,
-    tcbTimeSlice: word_t,
+    pub tcbMCP: types::prio_t,
+    pub tcbPriority: types::prio_t,
+    pub tcbTimeSlice: word_t,
     tcbFaultHandler: types::cptr_t,
     tcbIPCBuffer: word_t,
     
@@ -315,3 +315,11 @@ pub fn isCapRevocable(derivedCap:cap_t,srcCap:cap_t)->types::bool_t{
         _ => types::_bool::r#false as u64
     }
 }
+
+// include/object/tcb.h 因为不想翻译tcb.h整个文件所以就放这里了
+#[repr(C)]
+pub struct tcb_queue{
+    pub head:*mut tcb_t,
+    pub end:*mut tcb_t
+}
+pub type tcb_queue_t=tcb_queue;
