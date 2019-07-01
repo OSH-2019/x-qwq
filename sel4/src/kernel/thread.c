@@ -22,11 +22,27 @@
 #include <machine/registerset.h>
 #include <linker.h>
 
+prio_t getHighestPrio(word_t dom)
+{
+    word_t l1index;
+    word_t l2index;
+    word_t l1index_inverted;
+
+    /* it's undefined to call clzl on 0 */
+    assert(NODE_STATE(ksReadyQueuesL1Bitmap)[dom] != 0);
+
+    l1index = wordBits - 1 - clzl(NODE_STATE(ksReadyQueuesL1Bitmap)[dom]);
+    l1index_inverted = invert_l1index(l1index);
+    assert(NODE_STATE(ksReadyQueuesL2Bitmap)[dom][l1index_inverted] != 0);
+    l2index = wordBits - 1 - clzl(NODE_STATE(ksReadyQueuesL2Bitmap)[dom][l1index_inverted]);
+    return (l1index_to_prio(l1index) | l2index);
+}
+
 //修改的函数会写在thread.rs里
 
 extra_caps_t current_extra_caps;
 
-static seL4_MessageInfo_t
+seL4_MessageInfo_t
 transferCaps(seL4_MessageInfo_t info, extra_caps_t caps,
              endpoint_t *endpoint, tcb_t *receiver,
              word_t *receiveBuffer);
@@ -215,7 +231,7 @@ doFaultTransfer(word_t badge, tcb_t *sender, tcb_t *receiver,
 */
 
 /* Like getReceiveSlots, this is specialised for single-cap transfer. */
-static seL4_MessageInfo_t
+seL4_MessageInfo_t
 transferCaps(seL4_MessageInfo_t info, extra_caps_t caps,
              endpoint_t *endpoint, tcb_t *receiver,
              word_t *receiveBuffer)

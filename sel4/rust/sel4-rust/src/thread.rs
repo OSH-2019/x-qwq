@@ -3,6 +3,7 @@
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 #![allow(unused_attributes)]
+#![allow(unused_imports)]
 
 use crate::types::*;
 use crate::structures::{tcb_t,dschedule,tcb_queue_t,_thread_state,_thread_state_t,cte_t,cap_t,cap_tag_t};
@@ -12,6 +13,9 @@ use crate::registerset::*;
 extern "C"{
     static mut current_extra_caps:extra_caps_t;
     fn possibleSwitchTo(target:*mut tcb_t);
+    fn transferCaps(info:seL4_MessageInfo_t,caps:extra_caps_t,endpoint:*mut endpoint_t,
+    receiver:*mut tcb_t,receiveBuffer:*mut word_t)->seL4_MessageInfo_t;
+    fn getHighestPrio(dom:word_t)->prio_t;
     //src/model/statedata.c
     static mut ksReadyQueues:[tcb_queue_t;256];
     static mut ksReadyQueuesL1Bitmap:[word_t;1];
@@ -90,6 +94,7 @@ fn invert_l1index(l1index:word_t)->word_t{
     L2_BITMAP_SIZE as u64 - 1 - l1index
 }
 
+/*
 #[inline]
 unsafe fn getHighestPrio(dom:word_t)->prio_t{
     let l1index:word_t = (wordBits as i64 - 1 - rust_clzl(node_state!(ksReadyQueuesL1Bitmap)[dom as usize]) )as u64;
@@ -97,6 +102,7 @@ unsafe fn getHighestPrio(dom:word_t)->prio_t{
     let l2index:word_t = (wordBits as i64 - 1 - rust_clzl(node_state!(ksReadyQueuesL2Bitmap)[dom as usize][l1index_inverted as usize]) )as u64;
     l1index_to_prio(l1index) | l2index
 }
+*/
 
 #[inline]
 unsafe fn isHighestPrio(dom:word_t,prio:prio_t)->bool_t{
@@ -237,6 +243,7 @@ pub struct deriveCap_ret{
 }
 pub type deriveCap_ret_t=deriveCap_ret;
 
+/*
 const cap_endpoint_cap:u64=4;
 unsafe fn transferCaps(mut info:seL4_MessageInfo_t,caps:extra_caps_t,endpoint:*mut endpoint_t,
     receiver:*mut tcb_t,receiveBuffer:*mut word_t)->seL4_MessageInfo_t{
@@ -278,6 +285,7 @@ unsafe fn transferCaps(mut info:seL4_MessageInfo_t,caps:extra_caps_t,endpoint:*m
     
     seL4_MessageInfo_set_extraCaps(info,i as u64)
 }
+*/
 
 #[no_mangle]
 pub unsafe extern "C" fn doNBRecvFailedTransfer(thread:*mut tcb_t){
