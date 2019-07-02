@@ -8,6 +8,7 @@ use crate::types::word_t;
 use crate::structures::cap_t;
 use crate::structures::cap_tag_t;
 use crate::structures::thread_state_t;
+use crate::structures::lookup_fault_t;
 use crate::structures::mdb_node_t;
 
 //generated/arch/object/structures_gen.h
@@ -79,6 +80,23 @@ pub fn cap_cnode_cap_get_capCNodeRadix(cap:cap_t)->u64{
 }
 
 #[inline]
+pub fn cap_cnode_cap_get_capCNodeGuard(cap: cap_t) -> u64 {
+    cap.words[1] & 0xffffffffffffffffu64
+}
+
+#[inline]
+pub fn cap_cnode_cap_set_capCNodeGuard(mut cap: cap_t, v64: u64) -> cap_t {
+    cap.words[1] &= !0xffffffffffffffffu64;
+    cap.words[1] |= v64 & 0xffffffffffffffffu64;
+    cap
+}
+
+#[inline]
+pub fn cap_cnode_cap_get_capCNodeGuardSize(cap: cap_t) -> u64 {
+    (cap.words[0] & 0x7e0000000000000u64) >> 53
+}
+
+#[inline]
 pub fn cap_endpoint_cap_get_capEPBadge(cap:cap_t)->u64{
     cap.words[1] & 0xffffffffffffffffu64
 }
@@ -135,6 +153,15 @@ pub fn cap_reply_cap_new(capReplyMaster: u64, capTCBPtr: u64) -> cap_t {
     cap_t {
         words: [(capReplyMaster & 0x1u64) | (((cap_tag_t::cap_reply_cap as u64) & 0x1fu64) << 59), capTCBPtr],
     }
+}
+
+#[inline]
+pub fn cap_cnode_cap_get_capCNodePtr(cap: cap_t) -> u64 {
+    let mut ret = (cap.words[0] & 0x7fffffffffffu64) << 1;
+    if ret & (1u64 << (47)) != 0u64 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
 }
 
 #[inline]
@@ -374,4 +401,36 @@ pub fn mdb_node_new(mdbNext: u64, mdbRevocable: u64, mdbFirstBadged: u64, mdbPre
 pub unsafe fn mdb_node_ptr_set_mdbRevocable(mdb_node_ptr: *mut mdb_node_t, v64: u64) {
     (*mdb_node_ptr).words[1] &= !0x2u64;
     (*mdb_node_ptr).words[1] |= (v64 << 1) & 0x2u64;
+}
+
+pub enum lookup_fault_tag_t {
+    lookup_fault_invalid_root = 0,
+    lookup_fault_missing_capability = 1,
+    lookup_fault_depth_mismatch = 2,
+    lookup_fault_guard_mismatch = 3,
+}
+
+#[inline]
+pub fn lookup_fault_invalid_root_new() -> lookup_fault_t {
+    lookup_fault_t {
+        words: [0; 2],
+    }
+}
+
+#[inline]
+pub fn lookup_fault_depth_mismatch_new(bitsFound: u64, bitsLeft: u64) -> lookup_fault_t {
+    lookup_fault_t {
+        words: [((bitsFound & 0x7fu64) << 9) |
+            ((bitsLeft & 0x7fu64) << 2) |
+            (lookup_fault_tag_t::lookup_fault_depth_mismatch as u64 & 0x3u64), 0u64],
+    }
+}
+
+#[inline]
+pub fn lookup_fault_guard_mismatch_new(guardFound: u64, bitsLeft: u64, bitsFound: u64) -> lookup_fault_t {
+    lookup_fault_t {
+        words: [((bitsLeft & 0x7fu64) << 9) |
+            ((bitsFound & 0x7fu64) << 2) |
+            (lookup_fault_tag_t::lookup_fault_guard_mismatch as u64 & 0x3u64), guardFound],
+    }
 }

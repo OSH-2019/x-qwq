@@ -181,8 +181,9 @@ struct notification_t{
 }
 
 #[repr(C)]
-struct lookup_fault_t{
-    words:[u64;2]
+#[derive(Copy, Clone)]
+pub struct lookup_fault_t{
+    pub words:[u64;2]
 }
 
 #[repr(C)]

@@ -13,6 +13,7 @@ pub mod object;
 pub mod types;
 pub mod structures;
 pub mod thread;
+pub mod cspace;
 pub mod registerset;
 pub mod failures;
 
