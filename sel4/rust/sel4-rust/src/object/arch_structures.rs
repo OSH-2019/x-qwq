@@ -88,6 +88,7 @@ pub fn cap_notification_cap_get_capNtfnBadge(cap:cap_t)->u64{
     cap.words[1] & 0xffffffffffffffffu64
 }
 
+#[inline]
 pub fn cap_untyped_cap_get_capPtr(cap: cap_t) -> u64 {
     let mut ret = cap.words[0] & 0xffffffffffffu64;
     if ret & (1u64 << 47) != 0 {
@@ -96,25 +97,58 @@ pub fn cap_untyped_cap_get_capPtr(cap: cap_t) -> u64 {
     ret
 }
 
+#[inline]
 pub fn cap_untyped_cap_set_capFreeIndex(mut cap: cap_t, v64: u64) -> cap_t {
     cap.words[1] &= !0xffffffffffff0000u64;
     cap.words[1] |= (v64 << 16) & 0xffffffffffff0000u64;
     cap
 }
+
+#[inline]
 pub fn cap_untyped_cap_get_capFreeIndex(cap: cap_t) -> u64 {
     (cap.words[1] & 0xffffffffffff0000u64) >> 16
 }
+
+#[inline]
 pub fn cap_untyped_cap_get_capBlockSize(cap: cap_t) -> u64 {
     cap.words[1] & 0x3fu64
 }
+
+#[inline]
 pub fn cap_untyped_cap_get_capIsDevice(cap: cap_t) -> u64 {
     (cap.words[1] & 0x40u64) >> 6
 }
 
+#[inline]
+pub unsafe fn cap_untyped_cap_ptr_set_capFreeIndex(cap_ptr: *mut cap_t, v64: u64) {
+    (*cap_ptr).words[1] &= !0xffffffffffff0000u64;
+    (*cap_ptr).words[1] |= (v64 << 16) & 0xffffffffffff0000u64;
+}
+
+#[inline]
+pub fn cap_reply_cap_get_capReplyMaster(cap: cap_t) -> u64 {
+    cap.words[0] & 0x1u64
+}
+
+#[inline]
+pub fn cap_reply_cap_new(capReplyMaster: u64, capTCBPtr: u64) -> cap_t {
+    cap_t {
+        words: [(capReplyMaster & 0x1u64) | (((cap_tag_t::cap_reply_cap as u64) & 0x1fu64) << 59), capTCBPtr],
+    }
+}
+
+#[inline]
+pub fn cap_irq_handler_cap_get_capIRQ(cap: cap_t) -> u64 {
+    cap.words[1] & 0xffu64
+}
+
+#[inline]
 pub fn thread_state_get_tsType(thread_state:&thread_state_t)->u64{
     let ret:u64= thread_state.words[0] & 0xfu64;
     ret
 }
+
+#[inline]
 pub fn thread_state_ptr_set_tsType(thread_state_ptr:&mut thread_state_t,v64:u64){
     thread_state_ptr.words[0] &= !0xfu64;
     thread_state_ptr.words[0] |= v64 & 0xf;
@@ -334,4 +368,10 @@ pub fn mdb_node_new(mdbNext: u64, mdbRevocable: u64, mdbFirstBadged: u64, mdbPre
     mdb_node_t {
         words: [mdbPrev, (mdbNext & 0xfffffffffffcu64) | ((mdbRevocable & 0x1u64) << 1) | (mdbFirstBadged & 0x1u64)]
     }
+}
+
+#[inline]
+pub unsafe fn mdb_node_ptr_set_mdbRevocable(mdb_node_ptr: *mut mdb_node_t, v64: u64) {
+    (*mdb_node_ptr).words[1] &= !0x2u64;
+    (*mdb_node_ptr).words[1] |= (v64 << 1) & 0x2u64;
 }

@@ -2,15 +2,19 @@
 //#![feature(custom_attribute)]
 
 use core::panic::PanicInfo;
-pub mod object;
 
 #[macro_use]
 pub mod model;
 
+#[macro_use]
+pub mod errors;
+
+pub mod object;
 pub mod types;
 pub mod structures;
 pub mod thread;
 pub mod registerset;
+pub mod failures;
 
 #[allow(unused_attributes)]
 #[no_mangle] pub unsafe extern "C" fn rust_add(a: i32, b: i32) -> i32 {

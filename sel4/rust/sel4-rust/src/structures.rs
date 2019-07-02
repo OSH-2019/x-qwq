@@ -107,7 +107,7 @@ pub fn cap_zombie_cap_get_capZombiePtr(cap:cap_t)->word_t{
 }
 
 #[inline]
-fn cap_zombie_cap_set_capZombieNumber(cap:cap_t,n:word_t)->cap_t{
+pub fn cap_zombie_cap_set_capZombieNumber(cap:cap_t,n:word_t)->cap_t{
     let radix:word_t=cap_zombie_cap_get_capZombieBits(cap);
     let ptr=arch_structures::cap_zombie_cap_get_capZombieID(cap) & !MASK!(radix+1);
     arch_structures::cap_zombie_cap_set_capZombieID(cap, ptr | (n & MASK!(radix+1) ))
@@ -128,7 +128,7 @@ pub enum _thread_state {
 pub type _thread_state_t=word_t;
 
 #[repr(C)]
-enum tcb_cnode_index {
+pub enum tcb_cnode_index {
     tcbCTable = 0,
     tcbVTable = 1,
     tcbReply = 2,
@@ -314,6 +314,11 @@ pub fn isCapRevocable(derivedCap:cap_t,srcCap:cap_t)->types::bool_t{
             types::_bool::r#true as u64,
         _ => types::_bool::r#false as u64
     }
+}
+
+#[inline]
+pub unsafe fn tcb_ptr_cte_ptr(p: *mut tcb_t, i: u64) -> *mut cte_t {
+    (((p as u64) & (!MASK!(seL4_TCBBits))) as *mut cte_t).offset(i as isize)
 }
 
 // include/object/tcb.h 因为不想翻译tcb.h整个文件所以就放这里了
