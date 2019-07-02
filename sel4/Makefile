@@ -203,7 +203,7 @@ $(OBJECT_DIR)/config/default_domain.o: src/config/default_domain.c
 	$(CC) $(CFLAGS) $(INCLUDE) src/config/default_domain.c -c -o $(OBJECT_DIR)/config/default_domain.o
 
 RUST:
-	cd rust/sel4-rust && cargo build
+	cd rust/sel4-rust && ./build.sh
 
 kernel.elf: $(OBJECTS) RUST
 	$(CPP) $(INCLUDE) src/plat/pc99/linker.lds -o lds.tmp -P -DCONFIG_ARCH_X86_64 -DHAVE_AUTOCONF

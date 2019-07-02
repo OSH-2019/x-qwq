@@ -8,6 +8,7 @@ use crate::types::word_t;
 use crate::structures::cap_t;
 use crate::structures::cap_tag_t;
 use crate::structures::thread_state_t;
+use crate::structures::mdb_node_t;
 
 //generated/arch/object/structures_gen.h
 #[repr(C)]
@@ -255,10 +256,82 @@ pub fn cap_get_archCapIsPhysical(cap:cap_t)->bool_t{
 }
 
 #[inline]
+pub fn cap_null_cap_new() -> cap_t {
+    cap_t {
+        words: [0; 2],
+    }
+}
+
+#[inline]
 pub fn Arch_isCapRevocable(derivedCap:cap_t,srcCap:cap_t)->bool_t{
     if cap_get_capType(derivedCap) == cap_tag_t::cap_io_port_cap as u64 {
         ( cap_get_capType(srcCap) == cap_tag_t::cap_io_port_control_cap as u64 ) as u64
     } else {
         types::_bool::r#false as u64
+    }
+}
+
+#[inline]
+pub fn mdb_node_set_mdbPrev(mut mdb_node: mdb_node_t, v64: u64) -> mdb_node_t {
+    mdb_node.words[0] &= !0xffffffffffffffffu64;
+    mdb_node.words[0] |= (v64 << 0) & 0xffffffffffffffffu64;
+    mdb_node
+}
+
+#[inline]
+pub fn mdb_node_set_mdbRevocable(mut mdb_node: mdb_node_t, v64: u64) -> mdb_node_t {
+    mdb_node.words[1] &= !0x2u64;
+    mdb_node.words[1] |= (v64 << 1) & 0x2u64;
+    mdb_node
+}
+
+#[inline]
+pub fn mdb_node_set_mdbFirstBadged(mut mdb_node: mdb_node_t, v64: u64) -> mdb_node_t {
+    mdb_node.words[1] &= !0x1u64;
+    mdb_node.words[1] |= v64 & 0x1u64;
+    mdb_node
+}
+
+#[inline]
+pub fn mdb_node_get_mdbNext(mdb_node: mdb_node_t) -> u64 {
+    let mut ret = mdb_node.words[1] & 0xfffffffffffcu64;
+    if (ret & (1u64 << 47)) != 0 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
+}
+
+#[inline]
+pub fn mdb_node_get_mdbFirstBadged(mdb_node: mdb_node_t) -> u64 {
+    mdb_node.words[1] & 0x1u64
+}
+
+#[inline]
+pub fn mdb_node_get_mdbPrev(mdb_node: mdb_node_t) -> u64 {
+    mdb_node.words[0] & 0xffffffffffffffffu64
+}
+
+#[inline]
+pub unsafe fn mdb_node_ptr_set_mdbNext(mdb_node_ptr: *mut mdb_node_t, v64: u64) {
+    (*mdb_node_ptr).words[1] &= !0xfffffffffffcu64;
+    (*mdb_node_ptr).words[1] |= v64 & 0xfffffffffffcu64;
+}
+
+#[inline]
+pub unsafe fn mdb_node_ptr_set_mdbPrev(mdb_node_ptr: *mut mdb_node_t, v64: u64) {
+    (*mdb_node_ptr).words[0] &= !0xffffffffffffffffu64;
+    (*mdb_node_ptr).words[0] |= v64 & 0xffffffffffffffffu64;
+}
+
+#[inline]
+pub unsafe fn mdb_node_ptr_set_mdbFirstBadged(mdb_node_ptr: *mut mdb_node_t, v64: u64) {
+    (*mdb_node_ptr).words[1] &= !0x1u64;
+    (*mdb_node_ptr).words[1] |= v64 & 0x1u64;
+}
+
+#[inline]
+pub fn mdb_node_new(mdbNext: u64, mdbRevocable: u64, mdbFirstBadged: u64, mdbPrev: u64) ->mdb_node_t {
+    mdb_node_t {
+        words: [mdbPrev, (mdbNext & 0xfffffffffffcu64) | ((mdbRevocable & 0x1u64) << 1) | (mdbFirstBadged & 0x1u64)]
     }
 }

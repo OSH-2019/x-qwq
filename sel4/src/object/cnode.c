@@ -34,8 +34,8 @@ struct finaliseSlot_ret {
 };
 typedef struct finaliseSlot_ret finaliseSlot_ret_t;
 
-static finaliseSlot_ret_t finaliseSlot(cte_t *slot, bool_t exposed);
-static void emptySlot(cte_t *slot, cap_t cleanupInfo);
+//static finaliseSlot_ret_t finaliseSlot(cte_t *slot, bool_t exposed);
+//static void emptySlot(cte_t *slot, cap_t cleanupInfo);
 static exception_t reduceZombie(cte_t* slot, bool_t exposed);
 
 exception_t
@@ -396,7 +396,7 @@ invokeCNodeSaveCaller(cte_t *destSlot)
  * If creating a child UntypedCap, don't allow new objects to be created in the
  * parent.
  */
-static void
+/*static */void
 setUntypedCapAsFull(cap_t srcCap, cap_t newCap, cte_t *srcSlot)
 {
     if ((cap_get_capType(srcCap) == cap_untyped_cap)
@@ -411,170 +411,170 @@ setUntypedCapAsFull(cap_t srcCap, cap_t newCap, cte_t *srcSlot)
     }
 }
 
-void
-cteInsert(cap_t newCap, cte_t *srcSlot, cte_t *destSlot)
-{
-    mdb_node_t srcMDB, newMDB;
-    cap_t srcCap;
-    bool_t newCapIsRevocable;
+//void
+//cteInsert(cap_t newCap, cte_t *srcSlot, cte_t *destSlot)
+//{
+//    mdb_node_t srcMDB, newMDB;
+//    cap_t srcCap;
+//    bool_t newCapIsRevocable;
+//
+//    srcMDB = srcSlot->cteMDBNode;
+//    srcCap = srcSlot->cap;
+//
+//    newCapIsRevocable = isCapRevocable(newCap, srcCap);
+//
+//    newMDB = mdb_node_set_mdbPrev(srcMDB, CTE_REF(srcSlot));
+//    newMDB = mdb_node_set_mdbRevocable(newMDB, newCapIsRevocable);
+//    newMDB = mdb_node_set_mdbFirstBadged(newMDB, newCapIsRevocable);
+//
+//    /* Haskell error: "cteInsert to non-empty destination" */
+//    assert(cap_get_capType(destSlot->cap) == cap_null_cap);
+//    /* Haskell error: "cteInsert: mdb entry must be empty" */
+//    assert((cte_t*)mdb_node_get_mdbNext(destSlot->cteMDBNode) == NULL &&
+//           (cte_t*)mdb_node_get_mdbPrev(destSlot->cteMDBNode) == NULL);
+//
+//    /* Prevent parent untyped cap from being used again if creating a child
+//     * untyped from it. */
+//    setUntypedCapAsFull(srcCap, newCap, srcSlot);
+//
+//    destSlot->cap = newCap;
+//    destSlot->cteMDBNode = newMDB;
+//    mdb_node_ptr_set_mdbNext(&srcSlot->cteMDBNode, CTE_REF(destSlot));
+//    if (mdb_node_get_mdbNext(newMDB)) {
+//        mdb_node_ptr_set_mdbPrev(
+//            &CTE_PTR(mdb_node_get_mdbNext(newMDB))->cteMDBNode,
+//            CTE_REF(destSlot));
+//    }
+//}
 
-    srcMDB = srcSlot->cteMDBNode;
-    srcCap = srcSlot->cap;
+//void
+//cteMove(cap_t newCap, cte_t *srcSlot, cte_t *destSlot)
+//{
+//    mdb_node_t mdb;
+//    word_t prev_ptr, next_ptr;
+//
+//    /* Haskell error: "cteMove to non-empty destination" */
+//    assert(cap_get_capType(destSlot->cap) == cap_null_cap);
+//    /* Haskell error: "cteMove: mdb entry must be empty" */
+//    assert((cte_t*)mdb_node_get_mdbNext(destSlot->cteMDBNode) == NULL &&
+//           (cte_t*)mdb_node_get_mdbPrev(destSlot->cteMDBNode) == NULL);
+//
+//    mdb = srcSlot->cteMDBNode;
+//    destSlot->cap = newCap;
+//    srcSlot->cap = cap_null_cap_new();
+//    destSlot->cteMDBNode = mdb;
+//    srcSlot->cteMDBNode = nullMDBNode;
+//
+//    prev_ptr = mdb_node_get_mdbPrev(mdb);
+//    if (prev_ptr)
+//        mdb_node_ptr_set_mdbNext(
+//            &CTE_PTR(prev_ptr)->cteMDBNode,
+//            CTE_REF(destSlot));
+//
+//    next_ptr = mdb_node_get_mdbNext(mdb);
+//    if (next_ptr)
+//        mdb_node_ptr_set_mdbPrev(
+//            &CTE_PTR(next_ptr)->cteMDBNode,
+//            CTE_REF(destSlot));
+//}
 
-    newCapIsRevocable = isCapRevocable(newCap, srcCap);
+//void
+//capSwapForDelete(cte_t *slot1, cte_t *slot2)
+//{
+//    cap_t cap1, cap2;
+//
+//    if (slot1 == slot2) {
+//        return;
+//    }
+//
+//    cap1 = slot1->cap;
+//    cap2 = slot2->cap;
+//
+//    cteSwap(cap1, slot1, cap2, slot2);
+//}
 
-    newMDB = mdb_node_set_mdbPrev(srcMDB, CTE_REF(srcSlot));
-    newMDB = mdb_node_set_mdbRevocable(newMDB, newCapIsRevocable);
-    newMDB = mdb_node_set_mdbFirstBadged(newMDB, newCapIsRevocable);
+//void
+//cteSwap(cap_t cap1, cte_t *slot1, cap_t cap2, cte_t *slot2)
+//{
+//    mdb_node_t mdb1, mdb2;
+//    word_t next_ptr, prev_ptr;
+//
+//    slot1->cap = cap2;
+//    slot2->cap = cap1;
+//
+//    mdb1 = slot1->cteMDBNode;
+//
+//    prev_ptr = mdb_node_get_mdbPrev(mdb1);
+//    if (prev_ptr)
+//        mdb_node_ptr_set_mdbNext(
+//            &CTE_PTR(prev_ptr)->cteMDBNode,
+//            CTE_REF(slot2));
+//
+//    next_ptr = mdb_node_get_mdbNext(mdb1);
+//    if (next_ptr)
+//        mdb_node_ptr_set_mdbPrev(
+//            &CTE_PTR(next_ptr)->cteMDBNode,
+//            CTE_REF(slot2));
+//
+//    mdb2 = slot2->cteMDBNode;
+//    slot1->cteMDBNode = mdb2;
+//    slot2->cteMDBNode = mdb1;
+//
+//    prev_ptr = mdb_node_get_mdbPrev(mdb2);
+//    if (prev_ptr)
+//        mdb_node_ptr_set_mdbNext(
+//            &CTE_PTR(prev_ptr)->cteMDBNode,
+//            CTE_REF(slot1));
+//
+//    next_ptr = mdb_node_get_mdbNext(mdb2);
+//    if (next_ptr)
+//        mdb_node_ptr_set_mdbPrev(
+//            &CTE_PTR(next_ptr)->cteMDBNode,
+//            CTE_REF(slot1));
+//}
 
-    /* Haskell error: "cteInsert to non-empty destination" */
-    assert(cap_get_capType(destSlot->cap) == cap_null_cap);
-    /* Haskell error: "cteInsert: mdb entry must be empty" */
-    assert((cte_t*)mdb_node_get_mdbNext(destSlot->cteMDBNode) == NULL &&
-           (cte_t*)mdb_node_get_mdbPrev(destSlot->cteMDBNode) == NULL);
+//exception_t
+//cteRevoke(cte_t *slot)
+//{
+//    cte_t *nextPtr;
+//    exception_t status;
+//
+//    /* there is no need to check for a NullCap as NullCaps are
+//       always accompanied by null mdb pointers */
+//    for (nextPtr = CTE_PTR(mdb_node_get_mdbNext(slot->cteMDBNode));
+//            nextPtr && isMDBParentOf(slot, nextPtr);
+//            nextPtr = CTE_PTR(mdb_node_get_mdbNext(slot->cteMDBNode))) {
+//        status = cteDelete(nextPtr, true);
+//        if (status != EXCEPTION_NONE) {
+//            return status;
+//        }
+//
+//        status = preemptionPoint();
+//        if (status != EXCEPTION_NONE) {
+//            return status;
+//        }
+//    }
+//
+//    return EXCEPTION_NONE;
+//}
 
-    /* Prevent parent untyped cap from being used again if creating a child
-     * untyped from it. */
-    setUntypedCapAsFull(srcCap, newCap, srcSlot);
+//exception_t
+//cteDelete(cte_t *slot, bool_t exposed)
+//{
+//    finaliseSlot_ret_t fs_ret;
+//
+//    fs_ret = finaliseSlot(slot, exposed);
+//    if (fs_ret.status != EXCEPTION_NONE) {
+//        return fs_ret.status;
+//    }
+//
+//    if (exposed || fs_ret.success) {
+//        emptySlot(slot, fs_ret.cleanupInfo);
+//    }
+//    return EXCEPTION_NONE;
+//}
 
-    destSlot->cap = newCap;
-    destSlot->cteMDBNode = newMDB;
-    mdb_node_ptr_set_mdbNext(&srcSlot->cteMDBNode, CTE_REF(destSlot));
-    if (mdb_node_get_mdbNext(newMDB)) {
-        mdb_node_ptr_set_mdbPrev(
-            &CTE_PTR(mdb_node_get_mdbNext(newMDB))->cteMDBNode,
-            CTE_REF(destSlot));
-    }
-}
-
-void
-cteMove(cap_t newCap, cte_t *srcSlot, cte_t *destSlot)
-{
-    mdb_node_t mdb;
-    word_t prev_ptr, next_ptr;
-
-    /* Haskell error: "cteMove to non-empty destination" */
-    assert(cap_get_capType(destSlot->cap) == cap_null_cap);
-    /* Haskell error: "cteMove: mdb entry must be empty" */
-    assert((cte_t*)mdb_node_get_mdbNext(destSlot->cteMDBNode) == NULL &&
-           (cte_t*)mdb_node_get_mdbPrev(destSlot->cteMDBNode) == NULL);
-
-    mdb = srcSlot->cteMDBNode;
-    destSlot->cap = newCap;
-    srcSlot->cap = cap_null_cap_new();
-    destSlot->cteMDBNode = mdb;
-    srcSlot->cteMDBNode = nullMDBNode;
-
-    prev_ptr = mdb_node_get_mdbPrev(mdb);
-    if (prev_ptr)
-        mdb_node_ptr_set_mdbNext(
-            &CTE_PTR(prev_ptr)->cteMDBNode,
-            CTE_REF(destSlot));
-
-    next_ptr = mdb_node_get_mdbNext(mdb);
-    if (next_ptr)
-        mdb_node_ptr_set_mdbPrev(
-            &CTE_PTR(next_ptr)->cteMDBNode,
-            CTE_REF(destSlot));
-}
-
-void
-capSwapForDelete(cte_t *slot1, cte_t *slot2)
-{
-    cap_t cap1, cap2;
-
-    if (slot1 == slot2) {
-        return;
-    }
-
-    cap1 = slot1->cap;
-    cap2 = slot2->cap;
-
-    cteSwap(cap1, slot1, cap2, slot2);
-}
-
-void
-cteSwap(cap_t cap1, cte_t *slot1, cap_t cap2, cte_t *slot2)
-{
-    mdb_node_t mdb1, mdb2;
-    word_t next_ptr, prev_ptr;
-
-    slot1->cap = cap2;
-    slot2->cap = cap1;
-
-    mdb1 = slot1->cteMDBNode;
-
-    prev_ptr = mdb_node_get_mdbPrev(mdb1);
-    if (prev_ptr)
-        mdb_node_ptr_set_mdbNext(
-            &CTE_PTR(prev_ptr)->cteMDBNode,
-            CTE_REF(slot2));
-
-    next_ptr = mdb_node_get_mdbNext(mdb1);
-    if (next_ptr)
-        mdb_node_ptr_set_mdbPrev(
-            &CTE_PTR(next_ptr)->cteMDBNode,
-            CTE_REF(slot2));
-
-    mdb2 = slot2->cteMDBNode;
-    slot1->cteMDBNode = mdb2;
-    slot2->cteMDBNode = mdb1;
-
-    prev_ptr = mdb_node_get_mdbPrev(mdb2);
-    if (prev_ptr)
-        mdb_node_ptr_set_mdbNext(
-            &CTE_PTR(prev_ptr)->cteMDBNode,
-            CTE_REF(slot1));
-
-    next_ptr = mdb_node_get_mdbNext(mdb2);
-    if (next_ptr)
-        mdb_node_ptr_set_mdbPrev(
-            &CTE_PTR(next_ptr)->cteMDBNode,
-            CTE_REF(slot1));
-}
-
-exception_t
-cteRevoke(cte_t *slot)
-{
-    cte_t *nextPtr;
-    exception_t status;
-
-    /* there is no need to check for a NullCap as NullCaps are
-       always accompanied by null mdb pointers */
-    for (nextPtr = CTE_PTR(mdb_node_get_mdbNext(slot->cteMDBNode));
-            nextPtr && isMDBParentOf(slot, nextPtr);
-            nextPtr = CTE_PTR(mdb_node_get_mdbNext(slot->cteMDBNode))) {
-        status = cteDelete(nextPtr, true);
-        if (status != EXCEPTION_NONE) {
-            return status;
-        }
-
-        status = preemptionPoint();
-        if (status != EXCEPTION_NONE) {
-            return status;
-        }
-    }
-
-    return EXCEPTION_NONE;
-}
-
-exception_t
-cteDelete(cte_t *slot, bool_t exposed)
-{
-    finaliseSlot_ret_t fs_ret;
-
-    fs_ret = finaliseSlot(slot, exposed);
-    if (fs_ret.status != EXCEPTION_NONE) {
-        return fs_ret.status;
-    }
-
-    if (exposed || fs_ret.success) {
-        emptySlot(slot, fs_ret.cleanupInfo);
-    }
-    return EXCEPTION_NONE;
-}
-
-static void
+/*static */void
 emptySlot(cte_t *slot, cap_t cleanupInfo)
 {
     if (cap_get_capType(slot->cap) != cap_null_cap) {
@@ -625,7 +625,7 @@ capCyclicZombie(cap_t cap, cte_t *slot)
            CTE_PTR(cap_zombie_cap_get_capZombiePtr(cap)) == slot;
 }
 
-static finaliseSlot_ret_t
+/*static */finaliseSlot_ret_t
 finaliseSlot(cte_t *slot, bool_t immediate)
 {
     bool_t final;

@@ -1,5 +1,5 @@
 #![no_std]
-#![feature(custom_attribute)]
+//#![feature(custom_attribute)]
 
 use core::panic::PanicInfo;
 pub mod object;
