@@ -68,8 +68,8 @@ macro_rules! MASK {
     };
 }
 
-const ZombieType_ZombieTCB:u64=1u64<<6;
-const TCB_CNODE_RADIX:u64=4;
+pub const ZombieType_ZombieTCB:u64=1u64<<6;
+pub const TCB_CNODE_RADIX:u64=4;
 
 #[inline]
 pub fn Zombie_new(number:word_t, r#type:word_t, ptr:word_t)->cap_t{
@@ -236,10 +236,10 @@ pub enum cap_tag_t {
     cap_io_port_control_cap = 31
 }
 
-const seL4_EndpointBits:u64=4;
-const seL4_NotificationBits:u64=5;
-const seL4_SlotBits:u64=5;
-const seL4_TCBBits:u64=11;
+pub const seL4_EndpointBits:u64=4;
+pub const seL4_NotificationBits:u64=5;
+pub const seL4_SlotBits:u64=5;
+pub const seL4_TCBBits:u64=11;
 
 #[inline]
 pub fn cap_get_capSizeBits(cap:cap_t)->word_t{

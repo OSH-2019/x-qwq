@@ -30,176 +30,176 @@
 #include <util.h>
 #include <string.h>
 
-word_t getObjectSize(word_t t, word_t userObjSize)
-{
-    if (t >= seL4_NonArchObjectTypeCount) {
-        return Arch_getObjectSize(t);
-    } else {
-        switch (t) {
-        case seL4_TCBObject:
-            return seL4_TCBBits;
-        case seL4_EndpointObject:
-            return seL4_EndpointBits;
-        case seL4_NotificationObject:
-            return seL4_NotificationBits;
-        case seL4_CapTableObject:
-            return seL4_SlotBits + userObjSize;
-        case seL4_UntypedObject:
-            return userObjSize;
-        default:
-            fail("Invalid object type");
-            return 0;
-        }
-    }
-}
+//word_t getObjectSize(word_t t, word_t userObjSize)
+//{
+//    if (t >= seL4_NonArchObjectTypeCount) {
+//        return Arch_getObjectSize(t);
+//    } else {
+//        switch (t) {
+//        case seL4_TCBObject:
+//            return seL4_TCBBits;
+//        case seL4_EndpointObject:
+//            return seL4_EndpointBits;
+//        case seL4_NotificationObject:
+//            return seL4_NotificationBits;
+//        case seL4_CapTableObject:
+//            return seL4_SlotBits + userObjSize;
+//        case seL4_UntypedObject:
+//            return userObjSize;
+//        default:
+//            fail("Invalid object type");
+//            return 0;
+//        }
+//    }
+//}
 
-deriveCap_ret_t
-deriveCap(cte_t *slot, cap_t cap)
-{
-    deriveCap_ret_t ret;
+//deriveCap_ret_t
+//deriveCap(cte_t *slot, cap_t cap)
+//{
+//    deriveCap_ret_t ret;
+//
+//    if (isArchCap(cap)) {
+//        return Arch_deriveCap(slot, cap);
+//    }
+//
+//    switch (cap_get_capType(cap)) {
+//    case cap_zombie_cap:
+//        ret.status = EXCEPTION_NONE;
+//        ret.cap = cap_null_cap_new();
+//        break;
+//
+//    case cap_irq_control_cap:
+//        ret.status = EXCEPTION_NONE;
+//        ret.cap = cap_null_cap_new();
+//        break;
+//
+//    case cap_untyped_cap:
+//        ret.status = ensureNoChildren(slot);
+//        if (ret.status != EXCEPTION_NONE) {
+//            ret.cap = cap_null_cap_new();
+//        } else {
+//            ret.cap = cap;
+//        }
+//        break;
+//
+//    case cap_reply_cap:
+//        ret.status = EXCEPTION_NONE;
+//        ret.cap = cap_null_cap_new();
+//        break;
+//
+//    default:
+//        ret.status = EXCEPTION_NONE;
+//        ret.cap = cap;
+//    }
+//
+//    return ret;
+//}
 
-    if (isArchCap(cap)) {
-        return Arch_deriveCap(slot, cap);
-    }
-
-    switch (cap_get_capType(cap)) {
-    case cap_zombie_cap:
-        ret.status = EXCEPTION_NONE;
-        ret.cap = cap_null_cap_new();
-        break;
-
-    case cap_irq_control_cap:
-        ret.status = EXCEPTION_NONE;
-        ret.cap = cap_null_cap_new();
-        break;
-
-    case cap_untyped_cap:
-        ret.status = ensureNoChildren(slot);
-        if (ret.status != EXCEPTION_NONE) {
-            ret.cap = cap_null_cap_new();
-        } else {
-            ret.cap = cap;
-        }
-        break;
-
-    case cap_reply_cap:
-        ret.status = EXCEPTION_NONE;
-        ret.cap = cap_null_cap_new();
-        break;
-
-    default:
-        ret.status = EXCEPTION_NONE;
-        ret.cap = cap;
-    }
-
-    return ret;
-}
-
-finaliseCap_ret_t
-finaliseCap(cap_t cap, bool_t final, bool_t exposed)
-{
-    finaliseCap_ret_t fc_ret;
-
-    if (isArchCap(cap)) {
-        return Arch_finaliseCap(cap, final);
-    }
-
-    switch (cap_get_capType(cap)) {
-    case cap_endpoint_cap:
-        if (final) {
-            cancelAllIPC(EP_PTR(cap_endpoint_cap_get_capEPPtr(cap)));
-        }
-
-        fc_ret.remainder = cap_null_cap_new();
-        fc_ret.cleanupInfo = cap_null_cap_new();
-        return fc_ret;
-
-    case cap_notification_cap:
-        if (final) {
-            notification_t *ntfn = NTFN_PTR(cap_notification_cap_get_capNtfnPtr(cap));
-
-            unbindMaybeNotification(ntfn);
-            cancelAllSignals(ntfn);
-        }
-        fc_ret.remainder = cap_null_cap_new();
-        fc_ret.cleanupInfo = cap_null_cap_new();
-        return fc_ret;
-
-    case cap_reply_cap:
-    case cap_null_cap:
-    case cap_domain_cap:
-        fc_ret.remainder = cap_null_cap_new();
-        fc_ret.cleanupInfo = cap_null_cap_new();
-        return fc_ret;
-    }
-
-    if (exposed) {
-        fail("finaliseCap: failed to finalise immediately.");
-    }
-
-    switch (cap_get_capType(cap)) {
-    case cap_cnode_cap: {
-        if (final) {
-            fc_ret.remainder =
-                Zombie_new(
-                    1ul << cap_cnode_cap_get_capCNodeRadix(cap),
-                    cap_cnode_cap_get_capCNodeRadix(cap),
-                    cap_cnode_cap_get_capCNodePtr(cap)
-                );
-            fc_ret.cleanupInfo = cap_null_cap_new();
-            return fc_ret;
-        }
-        break;
-    }
-
-    case cap_thread_cap: {
-        if (final) {
-            tcb_t *tcb;
-            cte_t *cte_ptr;
-
-            tcb = TCB_PTR(cap_thread_cap_get_capTCBPtr(cap));
-            SMP_COND_STATEMENT(remoteTCBStall(tcb);)
-            cte_ptr = TCB_PTR_CTE_PTR(tcb, tcbCTable);
-            unbindNotification(tcb);
-            suspend(tcb);
-#ifdef CONFIG_DEBUG_BUILD
-            tcbDebugRemove(tcb);
-#endif
-            Arch_prepareThreadDelete(tcb);
-            fc_ret.remainder =
-                Zombie_new(
-                    tcbArchCNodeEntries,
-                    ZombieType_ZombieTCB,
-                    CTE_REF(cte_ptr)
-                );
-            fc_ret.cleanupInfo = cap_null_cap_new();
-            return fc_ret;
-        }
-        break;
-    }
-
-    case cap_zombie_cap:
-        fc_ret.remainder = cap;
-        fc_ret.cleanupInfo = cap_null_cap_new();
-        return fc_ret;
-
-    case cap_irq_handler_cap:
-        if (final) {
-            irq_t irq = cap_irq_handler_cap_get_capIRQ(cap);
-
-            deletingIRQHandler(irq);
-
-            fc_ret.remainder = cap_null_cap_new();
-            fc_ret.cleanupInfo = cap;
-            return fc_ret;
-        }
-        break;
-    }
-
-    fc_ret.remainder = cap_null_cap_new();
-    fc_ret.cleanupInfo = cap_null_cap_new();
-    return fc_ret;
-}
+//finaliseCap_ret_t
+//finaliseCap(cap_t cap, bool_t final, bool_t exposed)
+//{
+//    finaliseCap_ret_t fc_ret;
+//
+//    if (isArchCap(cap)) {
+//        return Arch_finaliseCap(cap, final);
+//    }
+//
+//    switch (cap_get_capType(cap)) {
+//    case cap_endpoint_cap:
+//        if (final) {
+//            cancelAllIPC(EP_PTR(cap_endpoint_cap_get_capEPPtr(cap)));
+//        }
+//
+//        fc_ret.remainder = cap_null_cap_new();
+//        fc_ret.cleanupInfo = cap_null_cap_new();
+//        return fc_ret;
+//
+//    case cap_notification_cap:
+//        if (final) {
+//            notification_t *ntfn = NTFN_PTR(cap_notification_cap_get_capNtfnPtr(cap));
+//
+//            unbindMaybeNotification(ntfn);
+//            cancelAllSignals(ntfn);
+//        }
+//        fc_ret.remainder = cap_null_cap_new();
+//        fc_ret.cleanupInfo = cap_null_cap_new();
+//        return fc_ret;
+//
+//    case cap_reply_cap:
+//    case cap_null_cap:
+//    case cap_domain_cap:
+//        fc_ret.remainder = cap_null_cap_new();
+//        fc_ret.cleanupInfo = cap_null_cap_new();
+//        return fc_ret;
+//    }
+//
+//    if (exposed) {
+//        fail("finaliseCap: failed to finalise immediately.");
+//    }
+//
+//    switch (cap_get_capType(cap)) {
+//    case cap_cnode_cap: {
+//        if (final) {
+//            fc_ret.remainder =
+//                Zombie_new(
+//                    1ul << cap_cnode_cap_get_capCNodeRadix(cap),
+//                    cap_cnode_cap_get_capCNodeRadix(cap),
+//                    cap_cnode_cap_get_capCNodePtr(cap)
+//                );
+//            fc_ret.cleanupInfo = cap_null_cap_new();
+//            return fc_ret;
+//        }
+//        break;
+//    }
+//
+//    case cap_thread_cap: {
+//        if (final) {
+//            tcb_t *tcb;
+//            cte_t *cte_ptr;
+//
+//            tcb = TCB_PTR(cap_thread_cap_get_capTCBPtr(cap));
+//            SMP_COND_STATEMENT(remoteTCBStall(tcb);)
+//            cte_ptr = TCB_PTR_CTE_PTR(tcb, tcbCTable);
+//            unbindNotification(tcb);
+//            suspend(tcb);
+//#ifdef CONFIG_DEBUG_BUILD
+//            tcbDebugRemove(tcb);
+//#endif
+//            Arch_prepareThreadDelete(tcb);
+//            fc_ret.remainder =
+//                Zombie_new(
+//                    tcbArchCNodeEntries,
+//                    ZombieType_ZombieTCB,
+//                    CTE_REF(cte_ptr)
+//                );
+//            fc_ret.cleanupInfo = cap_null_cap_new();
+//            return fc_ret;
+//        }
+//        break;
+//    }
+//
+//    case cap_zombie_cap:
+//        fc_ret.remainder = cap;
+//        fc_ret.cleanupInfo = cap_null_cap_new();
+//        return fc_ret;
+//
+//    case cap_irq_handler_cap:
+//        if (final) {
+//            irq_t irq = cap_irq_handler_cap_get_capIRQ(cap);
+//
+//            deletingIRQHandler(irq);
+//
+//            fc_ret.remainder = cap_null_cap_new();
+//            fc_ret.cleanupInfo = cap;
+//            return fc_ret;
+//        }
+//        break;
+//    }
+//
+//    fc_ret.remainder = cap_null_cap_new();
+//    fc_ret.cleanupInfo = cap_null_cap_new();
+//    return fc_ret;
+//}
 
 bool_t CONST
 hasCancelSendRights(cap_t cap)

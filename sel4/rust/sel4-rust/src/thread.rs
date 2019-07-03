@@ -8,6 +8,7 @@
 use crate::types::*;
 use crate::structures::{tcb_t,dschedule,tcb_queue_t,_thread_state,_thread_state_t,cte_t,cap_t,cap_tag_t};
 use crate::object::arch_structures::*;
+use crate::object::cap::*;
 use crate::registerset::*;
 
 extern "C"{
@@ -236,12 +237,12 @@ pub unsafe extern "C" fn doFaultTransfer(badge:word_t,sender:*mut tcb_t,receiver
     setRegister(receiver, badgeRegister, badge);
 }
 
-#[repr(C)]
-pub struct deriveCap_ret{
-    status:exception_t,
-    cap:cap_t
-}
-pub type deriveCap_ret_t=deriveCap_ret;
+//#[repr(C)]
+//pub struct deriveCap_ret{
+//    status:exception_t,
+//    cap:cap_t
+//}
+//pub type deriveCap_ret_t=deriveCap_ret;
 
 /*
 const cap_endpoint_cap:u64=4;

@@ -5,6 +5,7 @@
 use crate::types;
 use crate::types::bool_t;
 use crate::types::word_t;
+use crate::structures::tcb_cnode_index;
 use crate::structures::notification_t;
 use crate::structures::cap_t;
 use crate::structures::cap_tag_t;
@@ -175,6 +176,15 @@ pub fn cap_notification_cap_get_capNtfnPtr(cap: cap_t) -> u64 {
 }
 
 #[inline]
+pub fn cap_thread_cap_get_capTCBPtr(cap: cap_t) -> u64 {
+    let mut ret = cap.words[0] & 0xffffffffffffu64;
+    if (ret & (1u64 << 47)) != 0u64 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
+}
+
+#[inline]
 pub fn cap_irq_handler_cap_get_capIRQ(cap: cap_t) -> u64 {
     cap.words[1] & 0xffu64
 }
@@ -289,6 +299,10 @@ fn cap_get_modeCapIsPhysical(cap:cap_t)->bool_t{
 #[repr(C)]
 pub struct arch_tcb_t{
     pub tcbContext: user_context_t
+}
+
+pub enum tcb_arch_cnode_index {
+    tcbArchCNodeEntries = tcb_cnode_index::tcbCNodeEntries as isize,
 }
 
 const seL4_PageTableBits:u64=12;
