@@ -201,105 +201,105 @@
 //    return fc_ret;
 //}
 
-bool_t CONST
-hasCancelSendRights(cap_t cap)
-{
-    switch (cap_get_capType(cap)) {
-    case cap_endpoint_cap:
-        return cap_endpoint_cap_get_capCanSend(cap) &&
-               cap_endpoint_cap_get_capCanReceive(cap) &&
-               cap_endpoint_cap_get_capCanGrant(cap);
+//bool_t CONST
+//hasCancelSendRights(cap_t cap)
+//{
+//    switch (cap_get_capType(cap)) {
+//    case cap_endpoint_cap:
+//        return cap_endpoint_cap_get_capCanSend(cap) &&
+//               cap_endpoint_cap_get_capCanReceive(cap) &&
+//               cap_endpoint_cap_get_capCanGrant(cap);
+//
+//    default:
+//        return false;
+//    }
+//}
 
-    default:
-        return false;
-    }
-}
-
-bool_t CONST
-sameRegionAs(cap_t cap_a, cap_t cap_b)
-{
-    switch (cap_get_capType(cap_a)) {
-    case cap_untyped_cap:
-        if (cap_get_capIsPhysical(cap_b)) {
-            word_t aBase, bBase, aTop, bTop;
-
-            aBase = (word_t)WORD_PTR(cap_untyped_cap_get_capPtr(cap_a));
-            bBase = (word_t)cap_get_capPtr(cap_b);
-
-            aTop = aBase + MASK(cap_untyped_cap_get_capBlockSize(cap_a));
-            bTop = bBase + MASK(cap_get_capSizeBits(cap_b));
-
-            return (aBase <= bBase) && (bTop <= aTop) && (bBase <= bTop);
-        }
-        break;
-
-    case cap_endpoint_cap:
-        if (cap_get_capType(cap_b) == cap_endpoint_cap) {
-            return cap_endpoint_cap_get_capEPPtr(cap_a) ==
-                   cap_endpoint_cap_get_capEPPtr(cap_b);
-        }
-        break;
-
-    case cap_notification_cap:
-        if (cap_get_capType(cap_b) == cap_notification_cap) {
-            return cap_notification_cap_get_capNtfnPtr(cap_a) ==
-                   cap_notification_cap_get_capNtfnPtr(cap_b);
-        }
-        break;
-
-    case cap_cnode_cap:
-        if (cap_get_capType(cap_b) == cap_cnode_cap) {
-            return (cap_cnode_cap_get_capCNodePtr(cap_a) ==
-                    cap_cnode_cap_get_capCNodePtr(cap_b)) &&
-                   (cap_cnode_cap_get_capCNodeRadix(cap_a) ==
-                    cap_cnode_cap_get_capCNodeRadix(cap_b));
-        }
-        break;
-
-    case cap_thread_cap:
-        if (cap_get_capType(cap_b) == cap_thread_cap) {
-            return cap_thread_cap_get_capTCBPtr(cap_a) ==
-                   cap_thread_cap_get_capTCBPtr(cap_b);
-        }
-        break;
-
-    case cap_reply_cap:
-        if (cap_get_capType(cap_b) == cap_reply_cap) {
-            return cap_reply_cap_get_capTCBPtr(cap_a) ==
-                   cap_reply_cap_get_capTCBPtr(cap_b);
-        }
-        break;
-
-    case cap_domain_cap:
-        if (cap_get_capType(cap_b) == cap_domain_cap) {
-            return true;
-        }
-        break;
-
-    case cap_irq_control_cap:
-        if (cap_get_capType(cap_b) == cap_irq_control_cap ||
-                cap_get_capType(cap_b) == cap_irq_handler_cap) {
-            return true;
-        }
-        break;
-
-    case cap_irq_handler_cap:
-        if (cap_get_capType(cap_b) == cap_irq_handler_cap) {
-            return (irq_t)cap_irq_handler_cap_get_capIRQ(cap_a) ==
-                   (irq_t)cap_irq_handler_cap_get_capIRQ(cap_b);
-        }
-        break;
-
-    default:
-        if (isArchCap(cap_a) &&
-                isArchCap(cap_b)) {
-            return Arch_sameRegionAs(cap_a, cap_b);
-        }
-        break;
-    }
-
-    return false;
-}
+//bool_t CONST
+//sameRegionAs(cap_t cap_a, cap_t cap_b)
+//{
+//    switch (cap_get_capType(cap_a)) {
+//    case cap_untyped_cap:
+//        if (cap_get_capIsPhysical(cap_b)) {
+//            word_t aBase, bBase, aTop, bTop;
+//
+//            aBase = (word_t)WORD_PTR(cap_untyped_cap_get_capPtr(cap_a));
+//            bBase = (word_t)cap_get_capPtr(cap_b);
+//
+//            aTop = aBase + MASK(cap_untyped_cap_get_capBlockSize(cap_a));
+//            bTop = bBase + MASK(cap_get_capSizeBits(cap_b));
+//
+//            return (aBase <= bBase) && (bTop <= aTop) && (bBase <= bTop);
+//        }
+//        break;
+//
+//    case cap_endpoint_cap:
+//        if (cap_get_capType(cap_b) == cap_endpoint_cap) {
+//            return cap_endpoint_cap_get_capEPPtr(cap_a) ==
+//                   cap_endpoint_cap_get_capEPPtr(cap_b);
+//        }
+//        break;
+//
+//    case cap_notification_cap:
+//        if (cap_get_capType(cap_b) == cap_notification_cap) {
+//            return cap_notification_cap_get_capNtfnPtr(cap_a) ==
+//                   cap_notification_cap_get_capNtfnPtr(cap_b);
+//        }
+//        break;
+//
+//    case cap_cnode_cap:
+//        if (cap_get_capType(cap_b) == cap_cnode_cap) {
+//            return (cap_cnode_cap_get_capCNodePtr(cap_a) ==
+//                    cap_cnode_cap_get_capCNodePtr(cap_b)) &&
+//                   (cap_cnode_cap_get_capCNodeRadix(cap_a) ==
+//                    cap_cnode_cap_get_capCNodeRadix(cap_b));
+//        }
+//        break;
+//
+//    case cap_thread_cap:
+//        if (cap_get_capType(cap_b) == cap_thread_cap) {
+//            return cap_thread_cap_get_capTCBPtr(cap_a) ==
+//                   cap_thread_cap_get_capTCBPtr(cap_b);
+//        }
+//        break;
+//
+//    case cap_reply_cap:
+//        if (cap_get_capType(cap_b) == cap_reply_cap) {
+//            return cap_reply_cap_get_capTCBPtr(cap_a) ==
+//                   cap_reply_cap_get_capTCBPtr(cap_b);
+//        }
+//        break;
+//
+//    case cap_domain_cap:
+//        if (cap_get_capType(cap_b) == cap_domain_cap) {
+//            return true;
+//        }
+//        break;
+//
+//    case cap_irq_control_cap:
+//        if (cap_get_capType(cap_b) == cap_irq_control_cap ||
+//                cap_get_capType(cap_b) == cap_irq_handler_cap) {
+//            return true;
+//        }
+//        break;
+//
+//    case cap_irq_handler_cap:
+//        if (cap_get_capType(cap_b) == cap_irq_handler_cap) {
+//            return (irq_t)cap_irq_handler_cap_get_capIRQ(cap_a) ==
+//                   (irq_t)cap_irq_handler_cap_get_capIRQ(cap_b);
+//        }
+//        break;
+//
+//    default:
+//        if (isArchCap(cap_a) &&
+//                isArchCap(cap_b)) {
+//            return Arch_sameRegionAs(cap_a, cap_b);
+//        }
+//        break;
+//    }
+//
+//    return false;
+//}
 
 bool_t CONST
 sameObjectAs(cap_t cap_a, cap_t cap_b)

@@ -4,8 +4,8 @@
 #![allow(non_upper_case_globals)]
 use crate::types;
 use crate::types::word_t;
-use crate::object::arch_structures;
-use crate::object::arch_structures::{arch_tcb_t,seL4_Fault_t};
+use crate::object::*;
+use crate::object::arch_structures::*;
 
 //include/object/structures.h
 
@@ -81,13 +81,13 @@ pub fn Zombie_new(number:word_t, r#type:word_t, ptr:word_t)->cap_t{
             MASK!(r#type+1)
             //(1u64<<(r#type+1))-1u64
         };
-    arch_structures::cap_zombie_cap_new((ptr&!mask)|(number&mask), r#type)
+    cap_zombie_cap_new((ptr&!mask)|(number&mask), r#type)
 }
 
 
 #[inline]
 pub fn cap_zombie_cap_get_capZombieBits(cap:cap_t)->word_t{
-    let r#type=arch_structures::cap_zombie_cap_get_capZombieType(cap);
+    let r#type=cap_zombie_cap_get_capZombieType(cap);
     if r#type==ZombieType_ZombieTCB {
         return TCB_CNODE_RADIX;
     }
@@ -97,20 +97,20 @@ pub fn cap_zombie_cap_get_capZombieBits(cap:cap_t)->word_t{
 #[inline]
 pub fn cap_zombie_cap_get_capZombieNumber(cap:cap_t)->word_t{
     let radix:word_t=cap_zombie_cap_get_capZombieBits(cap);
-    arch_structures::cap_zombie_cap_get_capZombieID(cap) & MASK!(radix+1)
+    cap_zombie_cap_get_capZombieID(cap) & MASK!(radix+1)
 }
 
 #[inline]
 pub fn cap_zombie_cap_get_capZombiePtr(cap:cap_t)->word_t{
     let radix:word_t=cap_zombie_cap_get_capZombieBits(cap);
-    arch_structures::cap_zombie_cap_get_capZombieID(cap) & ! MASK!(radix+1)
+    cap_zombie_cap_get_capZombieID(cap) & ! MASK!(radix+1)
 }
 
 #[inline]
 pub fn cap_zombie_cap_set_capZombieNumber(cap:cap_t,n:word_t)->cap_t{
     let radix:word_t=cap_zombie_cap_get_capZombieBits(cap);
-    let ptr=arch_structures::cap_zombie_cap_get_capZombieID(cap) & !MASK!(radix+1);
-    arch_structures::cap_zombie_cap_set_capZombieID(cap, ptr | (n & MASK!(radix+1) ))
+    let ptr=cap_zombie_cap_get_capZombieID(cap) & !MASK!(radix+1);
+    cap_zombie_cap_set_capZombieID(cap, ptr | (n & MASK!(radix+1) ))
 }
 
 //线程相关
@@ -243,21 +243,21 @@ pub const seL4_TCBBits:u64=11;
 
 #[inline]
 pub fn cap_get_capSizeBits(cap:cap_t)->word_t{
-    let ctag=arch_structures::cap_get_capType(cap);
+    let ctag=cap_get_capType(cap);
     //rust不允许整数直接转枚举体，所以只能用这种别扭的写法了
     match ctag{
         ctag if ctag==(cap_tag_t::cap_null_cap as u64) => 
-            arch_structures::cap_untyped_cap_get_capBlockSize(cap),
+            cap_untyped_cap_get_capBlockSize(cap),
         ctag if ctag==(cap_tag_t::cap_endpoint_cap as u64) =>
             seL4_EndpointBits,
         ctag if ctag==(cap_tag_t::cap_notification_cap as u64) =>
             seL4_NotificationBits,
         ctag if ctag==(cap_tag_t::cap_cnode_cap as u64) =>
-            arch_structures::cap_cnode_cap_get_capCNodeRadix(cap)+seL4_SlotBits,
+            cap_cnode_cap_get_capCNodeRadix(cap)+seL4_SlotBits,
         ctag if ctag==(cap_tag_t::cap_thread_cap as u64) =>
             seL4_TCBBits,
         ctag if ctag==(cap_tag_t::cap_zombie_cap as u64) =>{
-            let r#type=arch_structures::cap_zombie_cap_get_capZombieType(cap);
+            let r#type=cap_zombie_cap_get_capZombieType(cap);
             if r#type == ZombieType_ZombieTCB {
                 seL4_TCBBits
             } else {
@@ -270,13 +270,13 @@ pub fn cap_get_capSizeBits(cap:cap_t)->word_t{
                 ctag==(cap_tag_t::cap_irq_control_cap as u64) ||
                 ctag==(cap_tag_t::cap_irq_handler_cap as u64) =>
             0,
-        _ => arch_structures::cap_get_archCapSizeBits(cap)
+        _ => cap_get_archCapSizeBits(cap)
     }
 }
 
 #[inline]
 pub fn cap_get_capIsPhysical(cap:cap_t)->types::bool_t{
-    let ctag=arch_structures::cap_get_capType(cap);
+    let ctag=cap_get_capType(cap);
     match ctag{
         ctag if ctag==(cap_tag_t::cap_untyped_cap as u64) ||
                 ctag==(cap_tag_t::cap_endpoint_cap as u64) ||
@@ -290,28 +290,49 @@ pub fn cap_get_capIsPhysical(cap:cap_t)->types::bool_t{
                 ctag==(cap_tag_t::cap_irq_control_cap as u64) ||
                 ctag==(cap_tag_t::cap_irq_handler_cap as u64) =>
             types::_bool::r#false as u64,
-        _ => arch_structures::cap_get_archCapIsPhysical(cap)
+        _ => cap_get_archCapIsPhysical(cap)
     }
 }
 
-//cap_get_capPtr由于在rust中没有对应的void*，所以暂时不翻译了
-//等真的需要用这个函数的时候，再考虑怎么解决这个问题！
+#[inline]
+pub unsafe fn cap_get_capPtr(cap: cap_t) -> u64 {
+    let ctag = cap_get_capType(cap);
+    if ctag == cap_tag_t::cap_untyped_cap as u64 {
+        return cap_untyped_cap_get_capPtr(cap);
+    } else if ctag == cap_tag_t::cap_endpoint_cap as u64 {
+        return cap_endpoint_cap_get_capEPPtr(cap);
+    } else if ctag == cap_tag_t::cap_notification_cap as u64 {
+        return cap_notification_cap_get_capNtfnPtr(cap);
+    } else if ctag == cap_tag_t::cap_cnode_cap as u64 {
+        return cap_cnode_cap_get_capCNodePtr(cap);
+    } else if ctag == cap_tag_t::cap_thread_cap as u64 {
+        return tcb_ptr_cte_ptr(cap_thread_cap_get_capTCBPtr(cap) as *mut tcb_t, 0) as u64;
+    } else if ctag == cap_tag_t::cap_zombie_cap as u64 {
+        return cap_zombie_cap_get_capZombiePtr(cap);
+    } else if ctag == cap_tag_t::cap_domain_cap as u64 ||
+        ctag == cap_tag_t::cap_reply_cap as u64 ||
+        ctag == cap_tag_t::cap_irq_control_cap as u64 ||
+        ctag == cap_tag_t::cap_irq_handler_cap as u64 {
+        return 0u64;
+    }
+    cap_get_archCapPtr(cap)
+}
 
 #[inline]
 pub fn isCapRevocable(derivedCap:cap_t,srcCap:cap_t)->types::bool_t{
-    if arch_structures::isArchCap(derivedCap)!=0 {
-        return arch_structures::Arch_isCapRevocable(derivedCap, srcCap);
+    if isArchCap(derivedCap)!=0 {
+        return Arch_isCapRevocable(derivedCap, srcCap);
     }
-    let ctag=arch_structures::cap_get_capType(derivedCap);
+    let ctag=cap_get_capType(derivedCap);
     match ctag{
         ctag if ctag==(cap_tag_t::cap_endpoint_cap as u64) =>
-            ( arch_structures::cap_endpoint_cap_get_capEPBadge(derivedCap) !=
-            arch_structures::cap_endpoint_cap_get_capEPBadge(srcCap) ) as u64,
+            ( cap_endpoint_cap_get_capEPBadge(derivedCap) !=
+            cap_endpoint_cap_get_capEPBadge(srcCap) ) as u64,
         ctag if ctag==(cap_tag_t::cap_notification_cap as u64) =>
-            ( arch_structures::cap_notification_cap_get_capNtfnBadge(derivedCap) !=
-            arch_structures::cap_notification_cap_get_capNtfnBadge(srcCap) ) as u64,
+            ( cap_notification_cap_get_capNtfnBadge(derivedCap) !=
+            cap_notification_cap_get_capNtfnBadge(srcCap) ) as u64,
         ctag if ctag==(cap_tag_t::cap_irq_handler_cap as u64) =>
-            ( arch_structures::cap_get_capType(srcCap) == cap_tag_t::cap_irq_control_cap as u64 ) as u64,
+            ( cap_get_capType(srcCap) == cap_tag_t::cap_irq_control_cap as u64 ) as u64,
         ctag if ctag==(cap_tag_t::cap_untyped_cap as u64) =>
             types::_bool::r#true as u64,
         _ => types::_bool::r#false as u64

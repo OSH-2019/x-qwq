@@ -20,6 +20,7 @@ extern "C" {
     fn Arch_finaliseCap(cap: cap_t, final_: bool_t) -> finaliseCap_ret_t;
     fn Arch_prepareThreadDelete(thread: *mut tcb_t);
     //fn deletedIRQHandler(irq: u8);
+    fn Arch_sameRegionAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
     fn tcbDebugRemove(tcb: *mut tcb_t);
     fn cancelAllIPC(epptr: *mut endpoint_t);
 }
@@ -176,6 +177,81 @@ pub unsafe extern "C" fn finaliseCap(cap: cap_t, final_: bool_t, exposed: bool_t
         remainder: cap_null_cap_new(),
         cleanupInfo: cap_null_cap_new(),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn hasCancelSendRights(cap: cap_t) -> bool_t {
+    if cap_get_capType(cap) == cap_tag_t::cap_endpoint_cap as u64 {
+        return (cap_endpoint_cap_get_capCanSend(cap) != 0u64 &&
+            cap_endpoint_cap_get_capCanReceive(cap) != 0u64 &&
+            cap_endpoint_cap_get_capCanGrant(cap) != 0u64) as u64;
+    }
+    0u64
+}
+
+macro_rules! MASK {
+    ($x:expr) => {
+        (1u64<<($x))-1u64
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn sameRegionAs(cap_a: cap_t, cap_b: cap_t) -> bool_t {
+    let cap_type = cap_get_capType(cap_a);
+    if cap_type == cap_tag_t::cap_untyped_cap as u64 {
+        if cap_get_capIsPhysical(cap_b) != 0u64 {
+            let aBase = cap_untyped_cap_get_capPtr(cap_a);
+            let bBase = cap_get_capPtr(cap_b);
+            let aTop = aBase + MASK!(cap_untyped_cap_get_capBlockSize(cap_a));
+            let bTop = bBase + MASK!(cap_get_capSizeBits(cap_b));
+            return ((aBase <= bBase) && (bTop <= aTop) && (bBase <= bTop)) as u64;
+        }
+    } else if cap_type == cap_tag_t::cap_endpoint_cap as u64 {
+        if cap_get_capType(cap_b) == cap_tag_t::cap_endpoint_cap as u64 {
+            return (cap_endpoint_cap_get_capEPPtr(cap_a) ==
+                cap_endpoint_cap_get_capEPPtr(cap_b)) as u64;
+        }
+    } else if cap_type == cap_tag_t::cap_notification_cap as u64 {
+        if cap_get_capType(cap_b) == cap_tag_t::cap_endpoint_cap as u64 {
+            return (cap_notification_cap_get_capNtfnPtr(cap_a) ==
+                cap_notification_cap_get_capNtfnPtr(cap_b)) as u64;
+        }
+    } else if cap_type == cap_tag_t::cap_cnode_cap as u64 {
+        if cap_get_capType(cap_b) == cap_tag_t::cap_cnode_cap as u64 {
+            return ((cap_cnode_cap_get_capCNodePtr(cap_a) ==
+                cap_cnode_cap_get_capCNodePtr(cap_b)) &&
+                (cap_cnode_cap_get_capCNodeRadix(cap_a) ==
+                cap_cnode_cap_get_capCNodeRadix(cap_b))) as u64;
+        }
+    } else if cap_type == cap_tag_t::cap_thread_cap as u64 {
+        if cap_get_capType(cap_b) == cap_tag_t::cap_thread_cap as u64  {
+            return (cap_thread_cap_get_capTCBPtr(cap_a) ==
+                cap_thread_cap_get_capTCBPtr(cap_b)) as u64;
+        }
+    } else if cap_type == cap_tag_t::cap_reply_cap as u64 {
+        if cap_get_capType(cap_b) == cap_tag_t::cap_reply_cap as u64 {
+            return (cap_reply_cap_get_capTCBPtr(cap_a) ==
+                cap_reply_cap_get_capTCBPtr(cap_b)) as u64;
+        }
+    } else if cap_type == cap_tag_t::cap_domain_cap as u64 {
+        if cap_get_capType(cap_b) == cap_tag_t::cap_domain_cap as u64 {
+            return 1u64;
+        }
+    } else if cap_type == cap_tag_t::cap_irq_control_cap as u64 {
+        if cap_get_capType(cap_b) == cap_tag_t::cap_irq_control_cap as u64 ||
+            cap_get_capType(cap_b) == cap_tag_t::cap_irq_handler_cap as u64 {
+            return 1u64;
+        }
+    } else if cap_type == cap_tag_t::cap_irq_handler_cap as u64 {
+        if cap_get_capType(cap_b) == cap_tag_t::cap_irq_handler_cap as u64 {
+            return ((cap_irq_handler_cap_get_capIRQ(cap_a) as u8)
+                == (cap_irq_handler_cap_get_capIRQ(cap_b) as u8)) as u64;
+        }
+    }
+    if isArchCap(cap_a) != 0u64 && isArchCap(cap_b) != 0u64 {
+        return Arch_sameRegionAs(cap_a, cap_b);
+    }
+    0u64
 }
 
 #[inline]

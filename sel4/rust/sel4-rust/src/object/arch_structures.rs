@@ -63,6 +63,86 @@ pub fn cap_get_capType(cap:cap_t)->u64{
 }
 
 #[inline]
+pub fn cap_get_archCapPtr(cap: cap_t) -> u64 {
+    let ctag = cap_get_capType(cap);
+    if ctag == cap_tag_t::cap_frame_cap as u64{
+        return cap_frame_cap_get_capFBasePtr(cap);
+    } else if ctag == cap_tag_t::cap_page_table_cap as u64 {
+        return cap_page_table_cap_get_capPTBasePtr(cap);
+    } else if ctag == cap_tag_t::cap_page_directory_cap as u64 {
+        return cap_page_directory_cap_get_capPDBasePtr(cap);
+    } else if ctag == cap_tag_t::cap_io_port_cap as u64 {
+        return 0u64;
+    } else if ctag == cap_tag_t::cap_asid_control_cap as u64 {
+        return 0u64;
+    } else if ctag == cap_tag_t::cap_asid_pool_cap as u64 {
+        return cap_asid_pool_cap_get_capASIDPool(cap);
+    }
+    cap_get_modeCapPtr(cap)
+}
+
+#[inline]
+pub fn cap_frame_cap_get_capFBasePtr(cap: cap_t) -> u64 {
+    let mut ret = cap.words[1] & 0xffffffffffffu64;
+    if (ret & (1u64 << 47)) != 0u64 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
+}
+
+#[inline]
+pub fn cap_page_table_cap_get_capPTBasePtr(cap: cap_t) -> u64 {
+    let mut ret = cap.words[1] & 0xffffffffffffu64;
+    if (ret & (1u64 << 47)) != 0u64 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
+}
+
+#[inline]
+pub fn cap_page_directory_cap_get_capPDBasePtr(cap: cap_t) -> u64 {
+    let mut ret = cap.words[1] & 0xffffffffffffu64;
+    if (ret & (1u64 << 47)) != 0u64 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
+}
+
+#[inline]
+pub fn cap_asid_pool_cap_get_capASIDPool(cap: cap_t) -> u64 {
+    let mut ret = (cap.words[0] & 0x1fffffffffu64) << 11;
+    if (ret & (1u64 << 47)) != 0u64 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
+}
+
+#[inline]
+pub fn cap_get_modeCapPtr(cap: cap_t) -> u64 {
+    let ctag = cap_get_capType(cap);
+    if ctag == cap_tag_t::cap_pml4_cap as u64 {
+        return cap_pml4_cap_get_capPML4BasePtr(cap);
+    } else if ctag == cap_tag_t::cap_pdpt_cap as u64 {
+        return cap_pdpt_cap_get_capPDPTBasePtr(cap);
+    }
+    0u64
+}
+
+#[inline]
+pub fn cap_pml4_cap_get_capPML4BasePtr(cap: cap_t) -> u64 {
+    cap.words[1] & 0xffffffffffffffffu64
+}
+
+#[inline]
+pub fn cap_pdpt_cap_get_capPDPTBasePtr(cap: cap_t) -> u64 {
+    let mut ret = cap.words[1] & 0xffffffffffffu64;
+    if (ret & (1u64 << 47)) != 0u64 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
+}
+
+#[inline]
 pub fn cap_endpoint_cap_get_capEPPtr(cap:cap_t)->u64{
     let mut ret:u64=cap.words[0] & 0xffffffffffffu64;
     if (ret & (1u64 << 47))!=0 {
@@ -158,6 +238,11 @@ pub fn cap_reply_cap_new(capReplyMaster: u64, capTCBPtr: u64) -> cap_t {
 }
 
 #[inline]
+pub fn cap_reply_cap_get_capTCBPtr(cap: cap_t) -> u64 {
+    cap.words[1] & 0xffffffffffffffffu64
+}
+
+#[inline]
 pub fn cap_cnode_cap_get_capCNodePtr(cap: cap_t) -> u64 {
     let mut ret = (cap.words[0] & 0x7fffffffffffu64) << 1;
     if ret & (1u64 << (47)) != 0u64 {
@@ -182,6 +267,21 @@ pub fn cap_thread_cap_get_capTCBPtr(cap: cap_t) -> u64 {
         ret |= 0xffff000000000000u64;
     }
     ret
+}
+
+#[inline]
+pub fn cap_endpoint_cap_get_capCanSend(cap: cap_t) -> u64 {
+    (cap.words[0] & 0x100000000000000u64) >> 56
+}
+
+#[inline]
+pub fn cap_endpoint_cap_get_capCanReceive(cap: cap_t) -> u64 {
+    (cap.words[0] & 0x200000000000000u64) >> 57
+}
+
+#[inline]
+pub fn cap_endpoint_cap_get_capCanGrant(cap: cap_t) -> u64 {
+    (cap.words[0] & 0x400000000000000u64) >> 58
 }
 
 #[inline]
