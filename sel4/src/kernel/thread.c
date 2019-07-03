@@ -297,26 +297,26 @@ void doNBRecvFailedTransfer(tcb_t *thread)
 }
 */
 
-static void
-nextDomain(void)
-{
-    ksDomScheduleIdx++;
-    if (ksDomScheduleIdx >= ksDomScheduleLength) {
-        ksDomScheduleIdx = 0;
-    }
-    ksWorkUnitsCompleted = 0;
-    ksCurDomain = ksDomSchedule[ksDomScheduleIdx].domain;
-    ksDomainTime = ksDomSchedule[ksDomScheduleIdx].length;
-}
+//static void
+//nextDomain(void)
+//{
+//    ksDomScheduleIdx++;
+//    if (ksDomScheduleIdx >= ksDomScheduleLength) {
+//        ksDomScheduleIdx = 0;
+//    }
+//    ksWorkUnitsCompleted = 0;
+//    ksCurDomain = ksDomSchedule[ksDomScheduleIdx].domain;
+//    ksDomainTime = ksDomSchedule[ksDomScheduleIdx].length;
+//}
 
-static void
-scheduleChooseNewThread(void)
-{
-    if (ksDomainTime == 0) {
-        nextDomain();
-    }
-    chooseThread();
-}
+//static void
+//scheduleChooseNewThread(void)
+//{
+//    if (ksDomainTime == 0) {
+//        nextDomain();
+//    }
+//    chooseThread();
+//}
 
 /*
 void
@@ -466,20 +466,20 @@ setPriority(tcb_t *tptr, prio_t prio)
  * entry. Do not queue it yet, since a queue+unqueue operation is wasteful
  * if it will be picked. Instead, it waits in the 'ksSchedulerAction' site
  * on which the scheduler will take action. */
-void
-possibleSwitchTo(tcb_t* target)
-{
-    if (ksCurDomain != target->tcbDomain
-            SMP_COND_STATEMENT( || target->tcbAffinity != getCurrentCPUIndex())) {
-        SCHED_ENQUEUE(target);
-    } else if (NODE_STATE(ksSchedulerAction) != SchedulerAction_ResumeCurrentThread) {
-        /* Too many threads want special treatment, use regular queues. */
-        rescheduleRequired();
-        SCHED_ENQUEUE(target);
-    } else {
-        NODE_STATE(ksSchedulerAction) = target;
-    }
-}
+//void
+//possibleSwitchTo(tcb_t* target)
+//{
+//    if (ksCurDomain != target->tcbDomain
+//            SMP_COND_STATEMENT( || target->tcbAffinity != getCurrentCPUIndex())) {
+//        SCHED_ENQUEUE(target);
+//    } else if (NODE_STATE(ksSchedulerAction) != SchedulerAction_ResumeCurrentThread) {
+//        /* Too many threads want special treatment, use regular queues. */
+//        rescheduleRequired();
+//        SCHED_ENQUEUE(target);
+//    } else {
+//        NODE_STATE(ksSchedulerAction) = target;
+//    }
+//}
 
 /*
 void

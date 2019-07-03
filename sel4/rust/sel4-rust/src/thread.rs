@@ -13,7 +13,7 @@ use crate::registerset::*;
 
 extern "C"{
     static mut current_extra_caps:extra_caps_t;
-    fn possibleSwitchTo(target:*mut tcb_t);
+    //fn possibleSwitchTo(target:*mut tcb_t);
     fn transferCaps(info:seL4_MessageInfo_t,caps:extra_caps_t,endpoint:*mut endpoint_t,
     receiver:*mut tcb_t,receiveBuffer:*mut word_t)->seL4_MessageInfo_t;
     fn getHighestPrio(dom:word_t)->prio_t;
@@ -399,6 +399,19 @@ pub unsafe extern "C" fn setPriority(tptr:*mut tcb_t,prio:prio_t){
     if isRunnable(tptr) !=0 {
         tcbSchedEnqueue(tptr);
         rescheduleRequired();
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn possibleSwitchTo(target: *mut tcb_t) {
+    //ignore smp
+    if ksCurDomain != (*target).tcbDomain {
+        tcbSchedEnqueue(target);
+    } else if node_state!(ksSchedulerAction) != SchedulerAction_ResumeCurrentThread {
+        rescheduleRequired();
+        tcbSchedEnqueue(target);
+    } else {
+        node_state!(ksSchedulerAction) = target;
     }
 }
 
