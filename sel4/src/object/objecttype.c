@@ -301,68 +301,68 @@
 //    return false;
 //}
 
-bool_t CONST
-sameObjectAs(cap_t cap_a, cap_t cap_b)
-{
-    if (cap_get_capType(cap_a) == cap_untyped_cap) {
-        return false;
-    }
-    if (cap_get_capType(cap_a) == cap_irq_control_cap &&
-            cap_get_capType(cap_b) == cap_irq_handler_cap) {
-        return false;
-    }
-    if (isArchCap(cap_a) && isArchCap(cap_b)) {
-        return Arch_sameObjectAs(cap_a, cap_b);
-    }
-    return sameRegionAs(cap_a, cap_b);
-}
+//bool_t CONST
+//sameObjectAs(cap_t cap_a, cap_t cap_b)
+//{
+//    if (cap_get_capType(cap_a) == cap_untyped_cap) {
+//        return false;
+//    }
+//    if (cap_get_capType(cap_a) == cap_irq_control_cap &&
+//            cap_get_capType(cap_b) == cap_irq_handler_cap) {
+//        return false;
+//    }
+//    if (isArchCap(cap_a) && isArchCap(cap_b)) {
+//        return Arch_sameObjectAs(cap_a, cap_b);
+//    }
+//    return sameRegionAs(cap_a, cap_b);
+//}
 
-cap_t CONST
-updateCapData(bool_t preserve, word_t newData, cap_t cap)
-{
-    if (isArchCap(cap)) {
-        return Arch_updateCapData(preserve, newData, cap);
-    }
-
-    switch (cap_get_capType(cap)) {
-    case cap_endpoint_cap:
-        if (!preserve && cap_endpoint_cap_get_capEPBadge(cap) == 0) {
-            return cap_endpoint_cap_set_capEPBadge(cap, newData);
-        } else {
-            return cap_null_cap_new();
-        }
-
-    case cap_notification_cap:
-        if (!preserve && cap_notification_cap_get_capNtfnBadge(cap) == 0) {
-            return cap_notification_cap_set_capNtfnBadge(cap, newData);
-        } else {
-            return cap_null_cap_new();
-        }
-
-    case cap_cnode_cap: {
-        word_t guard, guardSize;
-        seL4_CNode_CapData_t w = { .words = { newData } };
-
-        guardSize = seL4_CNode_CapData_get_guardSize(w);
-
-        if (guardSize + cap_cnode_cap_get_capCNodeRadix(cap) > wordBits) {
-            return cap_null_cap_new();
-        } else {
-            cap_t new_cap;
-
-            guard = seL4_CNode_CapData_get_guard(w) & MASK(guardSize);
-            new_cap = cap_cnode_cap_set_capCNodeGuard(cap, guard);
-            new_cap = cap_cnode_cap_set_capCNodeGuardSize(new_cap,
-                                                          guardSize);
-
-            return new_cap;
-        }
-    }
-
-    default:
-        return cap;
-    }
-}
+//cap_t CONST
+//updateCapData(bool_t preserve, word_t newData, cap_t cap)
+//{
+//    if (isArchCap(cap)) {
+//        return Arch_updateCapData(preserve, newData, cap);
+//    }
+//
+//    switch (cap_get_capType(cap)) {
+//    case cap_endpoint_cap:
+//        if (!preserve && cap_endpoint_cap_get_capEPBadge(cap) == 0) {
+//            return cap_endpoint_cap_set_capEPBadge(cap, newData);
+//        } else {
+//            return cap_null_cap_new();
+//        }
+//
+//    case cap_notification_cap:
+//        if (!preserve && cap_notification_cap_get_capNtfnBadge(cap) == 0) {
+//            return cap_notification_cap_set_capNtfnBadge(cap, newData);
+//        } else {
+//            return cap_null_cap_new();
+//        }
+//
+//    case cap_cnode_cap: {
+//        word_t guard, guardSize;
+//        seL4_CNode_CapData_t w = { .words = { newData } };
+//
+//        guardSize = seL4_CNode_CapData_get_guardSize(w);
+//
+//        if (guardSize + cap_cnode_cap_get_capCNodeRadix(cap) > wordBits) {
+//            return cap_null_cap_new();
+//        } else {
+//            cap_t new_cap;
+//
+//            guard = seL4_CNode_CapData_get_guard(w) & MASK(guardSize);
+//            new_cap = cap_cnode_cap_set_capCNodeGuard(cap, guard);
+//            new_cap = cap_cnode_cap_set_capCNodeGuardSize(new_cap,
+//                                                          guardSize);
+//
+//            return new_cap;
+//        }
+//    }
+//
+//    default:
+//        return cap;
+//    }
+//}
 
 cap_t CONST
 maskCapRights(seL4_CapRights_t cap_rights, cap_t cap)
@@ -608,27 +608,27 @@ decodeInvocation(word_t invLabel, word_t length,
     }
 }
 
-exception_t
-performInvocation_Endpoint(endpoint_t *ep, word_t badge,
-                           bool_t canGrant, bool_t block,
-                           bool_t call)
-{
-    sendIPC(block, call, badge, canGrant, NODE_STATE(ksCurThread), ep);
+//exception_t
+//performInvocation_Endpoint(endpoint_t *ep, word_t badge,
+//                           bool_t canGrant, bool_t block,
+//                           bool_t call)
+//{
+//    sendIPC(block, call, badge, canGrant, NODE_STATE(ksCurThread), ep);
+//
+//    return EXCEPTION_NONE;
+//}
 
-    return EXCEPTION_NONE;
-}
+//exception_t
+//performInvocation_Notification(notification_t *ntfn, word_t badge)
+//{
+//    sendSignal(ntfn, badge);
+//
+//    return EXCEPTION_NONE;
+//}
 
-exception_t
-performInvocation_Notification(notification_t *ntfn, word_t badge)
-{
-    sendSignal(ntfn, badge);
-
-    return EXCEPTION_NONE;
-}
-
-exception_t
-performInvocation_Reply(tcb_t *thread, cte_t *slot)
-{
-    doReplyTransfer(NODE_STATE(ksCurThread), thread, slot);
-    return EXCEPTION_NONE;
-}
+//exception_t
+//performInvocation_Reply(tcb_t *thread, cte_t *slot)
+//{
+//    doReplyTransfer(NODE_STATE(ksCurThread), thread, slot);
+//    return EXCEPTION_NONE;
+//}

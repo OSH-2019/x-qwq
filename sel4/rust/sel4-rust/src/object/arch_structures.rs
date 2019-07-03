@@ -179,13 +179,34 @@ pub fn cap_cnode_cap_get_capCNodeGuardSize(cap: cap_t) -> u64 {
 }
 
 #[inline]
+pub fn cap_cnode_cap_set_capCNodeGuardSize(mut cap: cap_t, v64: u64) -> cap_t {
+    cap.words[0] &= !0x7e0000000000000u64;
+    cap.words[0] |= (v64 << 53) & 0x7e0000000000000u64;
+    cap
+}
+
+#[inline]
 pub fn cap_endpoint_cap_get_capEPBadge(cap:cap_t)->u64{
     cap.words[1] & 0xffffffffffffffffu64
 }
 
 #[inline]
+pub fn cap_endpoint_cap_set_capEPBadge(mut cap: cap_t, v64: u64) -> cap_t {
+    cap.words[1] &= !0xffffffffffffffffu64;
+    cap.words[1] |= v64 & 0xffffffffffffffffu64;
+    cap
+}
+
+#[inline]
 pub fn cap_notification_cap_get_capNtfnBadge(cap:cap_t)->u64{
     cap.words[1] & 0xffffffffffffffffu64
+}
+
+#[inline]
+pub fn cap_notification_cap_set_capNtfnBadge(mut cap: cap_t, v64: u64) -> cap_t {
+    cap.words[1] &= !0xffffffffffffffffu64;
+    cap.words[1] |= v64 & 0xffffffffffffffffu64;
+    cap
 }
 
 #[inline]
@@ -639,4 +660,20 @@ pub unsafe fn notification_ptr_set_ntfnBoundTCB(notification_ptr: *mut notificat
 #[inline]
 pub unsafe fn thread_state_ptr_get_tsType(thread_state_ptr: *mut thread_state_t) -> u64 {
     (*thread_state_ptr).words[0] & 0xfu64
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct seL4_CNode_CapData_t {
+    pub words: [u64;1],
+}
+
+#[inline]
+pub fn seL4_CNode_CapData_get_guard(seL4_CNode_CapData: seL4_CNode_CapData_t) -> u64 {
+    (seL4_CNode_CapData.words[0] & 0xffffffffffffffc0u64) >> 6
+}
+
+#[inline]
+pub fn seL4_CNode_CapData_get_guardSize(seL4_CNode_CapData: seL4_CNode_CapData_t) -> u64 {
+    seL4_CNode_CapData.words[0] & 0x3fu64
 }

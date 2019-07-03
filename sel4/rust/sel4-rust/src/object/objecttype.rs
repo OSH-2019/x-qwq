@@ -13,16 +13,21 @@ use crate::object::notification::*;
 use crate::object::arch_structures::*;
 
 extern "C" {
+    static mut ksCurThread: *mut tcb_t;
     fn deletedIRQHandler(irq: u8);
     fn Arch_postCapDeletion(cap: cap_t);
     fn Arch_getObjectSize(t: u64) -> u64;
     fn Arch_deriveCap(slot: *mut cte_t, cap: cap_t) -> deriveCap_ret_t;
     fn Arch_finaliseCap(cap: cap_t, final_: bool_t) -> finaliseCap_ret_t;
     fn Arch_prepareThreadDelete(thread: *mut tcb_t);
+    fn Arch_updateCapData(preserve: bool_t, newData: u64, cap: cap_t) -> cap_t;
     //fn deletedIRQHandler(irq: u8);
     fn Arch_sameRegionAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
+    fn Arch_sameObjectAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
     fn tcbDebugRemove(tcb: *mut tcb_t);
     fn cancelAllIPC(epptr: *mut endpoint_t);
+    fn sendIPC(blocking: bool_t, do_call: bool_t, badge: u64,
+               canGrant: bool_t, thread: *mut tcb_t, epptr: *mut endpoint_t);
 }
 
 pub enum seL4_ObjectType {
@@ -251,6 +256,78 @@ pub unsafe extern "C" fn sameRegionAs(cap_a: cap_t, cap_b: cap_t) -> bool_t {
     if isArchCap(cap_a) != 0u64 && isArchCap(cap_b) != 0u64 {
         return Arch_sameRegionAs(cap_a, cap_b);
     }
+    0u64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn sameObjectAs(cap_a: cap_t, cap_b: cap_t) -> bool_t {
+    if cap_get_capType(cap_a) == cap_tag_t::cap_untyped_cap as u64 {
+        return 0u64;
+    }
+    if cap_get_capType(cap_a) == cap_tag_t::cap_irq_control_cap as u64 &&
+        cap_get_capType(cap_b) == cap_tag_t::cap_irq_handler_cap as u64 {
+        return 0u64;
+    }
+    if isArchCap(cap_a) != 0u64 && isArchCap(cap_b) != 0u64 {
+        return Arch_sameObjectAs(cap_a, cap_b);
+    }
+    sameRegionAs(cap_a, cap_b)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn updateCapData(preserve: bool_t, newData: u64, cap: cap_t) -> cap_t {
+    if isArchCap(cap) != 0u64 {
+        return Arch_updateCapData(preserve, newData, cap);
+    }
+    let cap_type = cap_get_capType(cap);
+    if cap_type == cap_tag_t::cap_endpoint_cap as u64 {
+        if preserve == 0u64 && cap_endpoint_cap_get_capEPBadge(cap) == 0 {
+            return cap_endpoint_cap_set_capEPBadge(cap, newData);
+        } else {
+            return cap_null_cap_new();
+        }
+    } else if cap_type == cap_tag_t::cap_notification_cap as u64 {
+        if preserve == 0u64 && cap_notification_cap_get_capNtfnBadge(cap) == 0 {
+            return cap_notification_cap_set_capNtfnBadge(cap, newData);
+        } else {
+            return cap_null_cap_new();
+        }
+    } else if cap_type == cap_tag_t::cap_cnode_cap as u64 {
+        let w = seL4_CNode_CapData_t {
+            words: [newData],
+        };
+        let guardSize = seL4_CNode_CapData_get_guardSize(w);
+        if guardSize + cap_cnode_cap_get_capCNodeRadix(cap) > wordBits {
+            return cap_null_cap_new();
+        } else {
+            let guard = seL4_CNode_CapData_get_guard(w) & MASK!(guardSize);
+            let mut new_cap = cap_cnode_cap_set_capCNodeGuard(cap, guard);
+            new_cap = cap_cnode_cap_set_capCNodeGuardSize(new_cap, guardSize);
+            return new_cap;
+        }
+    }
+    cap
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn
+performInvocation_Endpoint(ep: *mut endpoint_t, badge: u64,
+                           canGrant: bool_t, block: bool_t, call: bool_t) ->u64 {
+    sendIPC(block, call, badge, canGrant, node_state!(ksCurThread), ep);
+    0u64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn
+performInvocation_Notification(ntfn: *mut notification_t, badge: u64) -> u64 {
+    sendSignal(ntfn, badge);
+    0u64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn
+performInvocation_Reply(thread: *mut tcb_t, slot: *mut cte_t) -> u64 {
+    doReplyTransfer(node_state!(ksCurThread), thread, slot);
     0u64
 }
 
