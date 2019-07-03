@@ -44,7 +44,7 @@ pub struct dschedule {
 }
 
 #[repr(C)]
-enum endpoint_state {
+pub enum endpoint_state {
     EPState_Idle = 0,
     EPState_Send = 1,
     EPState_Recv = 2
@@ -52,7 +52,7 @@ enum endpoint_state {
 type endpoint_state_t=word_t;
 
 #[repr(C)]
-enum notification_state {
+pub enum notification_state {
     NtfnState_Idle = 0,
     NtfnState_Waiting = 1,
     NtfnState_Active = 2
@@ -176,8 +176,9 @@ pub struct thread_state_t{
 }
 
 #[repr(C)]
-struct notification_t{
-    words:[u64;4]
+#[derive(Copy, Clone)]
+pub struct notification_t{
+    pub words:[u64;4]
 }
 
 #[repr(C)]
@@ -190,24 +191,24 @@ pub struct lookup_fault_t{
 pub struct tcb_t {
     pub tcbArch: arch_tcb_t,
     pub tcbState: thread_state_t,
-    tcbBoundNotification: *mut notification_t,
+    pub tcbBoundNotification: *mut notification_t,
     pub tcbFault: seL4_Fault_t,
-    tcbLookupFailure: lookup_fault_t,
+    pub tcbLookupFailure: lookup_fault_t,
     pub tcbDomain: types::dom_t,
     pub tcbMCP: types::prio_t,
     pub tcbPriority: types::prio_t,
     pub tcbTimeSlice: word_t,
-    tcbFaultHandler: types::cptr_t,
-    tcbIPCBuffer: word_t,
+    pub tcbFaultHandler: types::cptr_t,
+    pub tcbIPCBuffer: word_t,
     
-    tcbSchedNext: *mut tcb_t,
-    tcbSchedPrev: *mut tcb_t,
-    tcbEPNext: *mut tcb_t,
-    tcbEPPrev: *mut tcb_t,
+    pub tcbSchedNext: *mut tcb_t,
+    pub tcbSchedPrev: *mut tcb_t,
+    pub tcbEPNext: *mut tcb_t,
+    pub tcbEPPrev: *mut tcb_t,
     
-    tcbDebugNext: *mut tcb_t,
-    tcbDebugPrev: *mut tcb_t,
-    tcbName: *mut u8 //C语言中是char tcbName[]，这里直接翻译成指针了
+    pub tcbDebugNext: *mut tcb_t,
+    pub tcbDebugPrev: *mut tcb_t,
+    pub tcbName: *mut u8 //C语言中是char tcbName[]，这里直接翻译成指针了
 }
 
 //cap相关
@@ -324,6 +325,7 @@ pub unsafe fn tcb_ptr_cte_ptr(p: *mut tcb_t, i: u64) -> *mut cte_t {
 
 // include/object/tcb.h 因为不想翻译tcb.h整个文件所以就放这里了
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct tcb_queue{
     pub head:*mut tcb_t,
     pub end:*mut tcb_t

@@ -5,6 +5,7 @@
 use crate::types;
 use crate::types::bool_t;
 use crate::types::word_t;
+use crate::structures::notification_t;
 use crate::structures::cap_t;
 use crate::structures::cap_tag_t;
 use crate::structures::thread_state_t;
@@ -165,20 +166,34 @@ pub fn cap_cnode_cap_get_capCNodePtr(cap: cap_t) -> u64 {
 }
 
 #[inline]
+pub fn cap_notification_cap_get_capNtfnPtr(cap: cap_t) -> u64 {
+    let mut ret = cap.words[0] & 0xffffffffffffu64;
+    if (ret & (1u64 << 47)) != 0u64 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
+}
+
+#[inline]
 pub fn cap_irq_handler_cap_get_capIRQ(cap: cap_t) -> u64 {
     cap.words[1] & 0xffu64
 }
 
 #[inline]
 pub fn thread_state_get_tsType(thread_state:&thread_state_t)->u64{
-    let ret:u64= thread_state.words[0] & 0xfu64;
-    ret
+    thread_state.words[0] & 0xfu64
 }
 
 #[inline]
 pub fn thread_state_ptr_set_tsType(thread_state_ptr:&mut thread_state_t,v64:u64){
     thread_state_ptr.words[0] &= !0xfu64;
-    thread_state_ptr.words[0] |= v64 & 0xf;
+    thread_state_ptr.words[0] |= v64 & 0xfu64;
+}
+
+#[inline]
+pub unsafe fn thread_state_ptr_set_blockingObject(thread_state_ptr: *mut thread_state_t, v64: u64) {
+    (*thread_state_ptr).words[0] &= !0xfffffffffff0u64;
+    (*thread_state_ptr).words[0] |= v64 & 0xfffffffffff0u64;
 }
 
 #[repr(C)]
@@ -433,4 +448,76 @@ pub fn lookup_fault_guard_mismatch_new(guardFound: u64, bitsLeft: u64, bitsFound
             ((bitsFound & 0x7fu64) << 2) |
             (lookup_fault_tag_t::lookup_fault_guard_mismatch as u64 & 0x3u64), guardFound],
     }
+}
+
+#[inline]
+pub unsafe fn notification_ptr_get_ntfnQueue_head(notification_ptr: *mut notification_t) -> u64 {
+    let mut ret = (*notification_ptr).words[1] & 0xffffffffffffu64;
+    if (ret & (1u64 << 47)) != 0u64 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
+}
+
+#[inline]
+pub unsafe fn notification_ptr_set_ntfnQueue_head(notification_ptr: *mut notification_t, v64: u64) {
+    (*notification_ptr).words[1] &= !0xffffffffffffu64;
+    (*notification_ptr).words[1] |= v64 & 0xffffffffffffu64;
+}
+
+#[inline]
+pub unsafe fn notification_ptr_get_ntfnQueue_tail(notification_ptr: *mut notification_t) -> u64 {
+    let mut ret = (*notification_ptr).words[0] & 0xffffffffffff0000u64;
+    if (ret & (1u64 << 47)) != 0u64 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
+}
+
+#[inline]
+pub unsafe fn notification_ptr_set_ntfnQueue_tail(notification_ptr: *mut notification_t, v64: u64) {
+    (*notification_ptr).words[0] &= !0xffffffffffff0000u64;
+    (*notification_ptr).words[0] |= (v64 << 16) & 0xffffffffffff0000u64;
+}
+
+#[inline]
+pub unsafe fn notification_ptr_get_state(notification_ptr: *mut notification_t) -> u64 {
+    (*notification_ptr).words[0] & 0x3u64
+}
+
+#[inline]
+pub unsafe fn notification_ptr_set_state(notification_ptr: *mut notification_t, v64: u64) {
+    (*notification_ptr).words[0] &= !0x3u64;
+    (*notification_ptr).words[0] |= v64 & 0x3u64;
+}
+
+#[inline]
+pub unsafe fn notification_ptr_get_ntfnMsgIdentifier(notification_ptr: *mut notification_t) -> u64 {
+    (*notification_ptr).words[2] & 0xffffffffffffffffu64
+}
+
+#[inline]
+pub unsafe fn notification_ptr_set_ntfnMsgIdentifier(notification_ptr: *mut notification_t, v64: u64) {
+    (*notification_ptr).words[2] &= !0xffffffffffffffffu64;
+    (*notification_ptr).words[2] |= v64 & 0xffffffffffffffffu64;
+}
+
+#[inline]
+pub unsafe fn notification_ptr_get_ntfnBoundTCB(notification_ptr: *mut notification_t) -> u64 {
+    let mut ret = (*notification_ptr).words[3] & 0xffffffffffffu64;
+    if (ret & (1u64 << 47)) != 0u64 {
+        ret |= 0xffff000000000000u64;
+    }
+    ret
+}
+
+#[inline]
+pub unsafe fn notification_ptr_set_ntfnBoundTCB(notification_ptr: *mut notification_t, v64: u64) {
+    (*notification_ptr).words[3] &= !0xffffffffffffu64;
+    (*notification_ptr).words[3] |= v64 & 0xffffffffffffu64;
+}
+
+#[inline]
+pub unsafe fn thread_state_ptr_get_tsType(thread_state_ptr: *mut thread_state_t) -> u64 {
+    (*thread_state_ptr).words[0] & 0xfu64
 }

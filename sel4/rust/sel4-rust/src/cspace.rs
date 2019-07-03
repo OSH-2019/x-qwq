@@ -4,6 +4,8 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused_attributes)]
 #![allow(unused_imports)]
+#![allow(unused_mut)]
+#![allow(unreachable_code)]
 
 use crate::types::*;
 use crate::structures::*;
@@ -175,7 +177,7 @@ pub unsafe extern "C" fn resolveAddressBits(mut nodeCap: cap_t, capptr: u64, mut
         return ret;
     }
     
-    while true {
+    loop {
         let radixBits = cap_cnode_cap_get_capCNodeRadix(nodeCap);
         let guardBits = cap_cnode_cap_get_capCNodeGuardSize(nodeCap);
         let levelBits = radixBits + guardBits;

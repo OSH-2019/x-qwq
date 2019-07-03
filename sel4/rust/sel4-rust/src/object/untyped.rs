@@ -1,7 +1,9 @@
 #![allow(non_snake_case)]
+#![allow(unused_imports)]
 
 use crate::object::cnode::*;
-use crate::structures::cte_t;
+use crate::structures::*;
+use crate::types::*;
 use crate::object::arch_structures::*;
 
 extern "C" {
