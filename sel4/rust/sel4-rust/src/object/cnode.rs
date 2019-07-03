@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
+#![allow(non_upper_case_globals)]
 
 use crate::types::*;
 use crate::structures::*;
@@ -10,6 +11,7 @@ use crate::errors::*;
 use crate::object::arch_structures::*;
 use crate::object::objecttype::*;
 use crate::object::cap::*;
+use crate::cspace::*;
 use crate::registerset::*;
 use crate::model::statedata::*;
 
@@ -32,13 +34,10 @@ pub struct finaliseSlot_ret_t {
 extern "C" {
     static mut current_syscall_error: syscall_error_t;
     static mut ksCurThread: *mut tcb_t;
-    //fn setUntypedCapAsFull(srcCap: cap_t, newCap: cap_t, srcSlot: *mut cte_t);
     fn preemptionPoint() -> u64;
-    fn isFinalCapability(slot: *mut cte_t) -> u64;
-    //fn finaliseSlot(slot: *mut cte_t, immediate: bool_t) -> finaliseSlot_ret_t;
     fn finaliseCap(cap: cap_t, final_: bool_t, exposed: bool_t) -> finaliseCap_ret_t;
-    //fn reduceZombie(slot: *mut cte_t, immediate: bool_t) -> u64;
-    fn isMDBParentOf(cte_a: *mut cte_t, cte_b: *mut cte_t) -> u64;
+    fn sameRegionAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
+    fn sameObjectAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
     fn cancelBadgedSends(epptr: *mut endpoint_t, badge: u64);
     fn kprintf(format: *const u8, ...) -> u64;
     fn puts(str: *const u8) -> u64;
@@ -359,6 +358,33 @@ pub unsafe extern "C" fn setupReplyMaster(thread: *mut tcb_t) {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn isMDBParentOf(cte_a: *mut cte_t, cte_b: *mut cte_t) -> bool_t {
+    if mdb_node_get_mdbRevocable((*cte_a).cteMDBNode) == 0u64 {
+        return 0u64;
+    }
+    if sameRegionAs((*cte_a).cap, (*cte_b).cap) == 0u64 {
+        return 0u64;
+    }
+    let cap_type = cap_get_capType((*cte_a).cap);
+    if cap_type == cap_tag_t::cap_endpoint_cap as u64 {
+        let badge = cap_endpoint_cap_get_capEPBadge((*cte_a).cap);
+        if badge == 0u64 {
+            return 1u64;
+        }
+        return ((badge == cap_endpoint_cap_get_capEPBadge((*cte_b).cap)) &&
+               mdb_node_get_mdbFirstBadged((*cte_b).cteMDBNode) == 0u64) as u64;
+    } else if cap_type == cap_tag_t::cap_notification_cap as u64 {
+        let badge = cap_notification_cap_get_capNtfnBadge((*cte_a).cap);
+        if badge == 0u64 {
+            return 1u64;
+        }
+        return ((badge == cap_notification_cap_get_capNtfnBadge((*cte_b).cap)) &&
+            mdb_node_get_mdbFirstBadged((*cte_b).cteMDBNode) == 0u64) as u64;
+    }
+    1u64
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ensureNoChildren(slot: *mut cte_t) -> u64 {
     if mdb_node_get_mdbNext((*slot).cteMDBNode) != 0u64 {
         let next = mdb_node_get_mdbNext((*slot).cteMDBNode) as *mut cte_t;
@@ -377,4 +403,70 @@ pub unsafe extern "C" fn ensureEmptySlot(slot: *mut cte_t) -> u64 {
         return exception::EXCEPTION_SYSCALL_ERROR as u64;
     }
     return 0u64;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn isFinalCapability(cte: *mut cte_t) -> bool_t {
+    let mdb = (*cte).cteMDBNode;
+    let prevIsSameObject: bool = if mdb_node_get_mdbPrev(mdb) == 0u64 {
+        false
+    } else {
+        let prev = mdb_node_get_mdbPrev(mdb) as *mut cte_t;
+        sameObjectAs((*prev).cap, (*cte).cap) == 1u64
+    };
+    if prevIsSameObject {
+        return 0u64;
+    } else {
+        if mdb_node_get_mdbNext(mdb) == 0u64 {
+            return 1u64;
+        } else {
+            let next = mdb_node_get_mdbNext(mdb) as *mut cte_t;
+            return sameObjectAs((*cte).cap, (*next).cap);
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn slotCapLongRunningDelete(slot: *mut cte_t) -> bool_t {
+    let cap_type = cap_get_capType((*slot).cap);
+    if cap_type == cap_tag_t::cap_null_cap as u64 {
+        return 0u64;
+    } else if isFinalCapability(slot) == 0u64 {
+        return 0u64;
+    }
+    if cap_type == cap_tag_t::cap_thread_cap as u64 ||
+        cap_type == cap_tag_t::cap_zombie_cap as u64 ||
+        cap_type == cap_tag_t::cap_cnode_cap as u64 {
+        return 1u64;
+    }
+    0u64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn getReceiveSlots(thread: *mut tcb_t, buffer: *mut u64) -> *mut cte_t {
+    if buffer as u64 == 0u64 {
+        return 0u64 as *mut cte_t;
+    }
+    let ct = loadCapTransfer(buffer);
+    let cptr = ct.ctReceiveRoot;
+    let luc_ret = lookupCap(thread, cptr);
+    if luc_ret.status != 0u64 {
+        return 0u64 as *mut cte_t;
+    }
+    let cnode = luc_ret.cap;
+    let lus_ret = lookupTargetSlot(cnode, ct.ctReceiveIndex, ct.ctReceiveDepth);
+    if lus_ret.status != 0u64 {
+        return 0u64 as *mut cte_t;
+    }
+    let slot = lus_ret.slot;
+    if cap_get_capType((*slot).cap) != cap_tag_t::cap_null_cap as u64 {
+        return 0u64 as *mut cte_t;
+    }
+    slot
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn loadCapTransfer(buffer: *mut u64) -> cap_transfer_t {
+    const offset: isize = (seL4_MsgMaxLength + seL4_MsgMaxExtraCaps as u64 + 2) as isize;
+    capTransferFromWords(buffer.offset(offset))
 }

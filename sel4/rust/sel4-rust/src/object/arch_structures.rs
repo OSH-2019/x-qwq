@@ -355,6 +355,11 @@ pub fn mdb_node_set_mdbPrev(mut mdb_node: mdb_node_t, v64: u64) -> mdb_node_t {
 }
 
 #[inline]
+pub fn mdb_node_get_mdbRevocable(mdb_node: mdb_node_t) -> u64 {
+    (mdb_node.words[1] & 0x2u64) >> 1
+}
+
+#[inline]
 pub fn mdb_node_set_mdbRevocable(mut mdb_node: mdb_node_t, v64: u64) -> mdb_node_t {
     mdb_node.words[1] &= !0x2u64;
     mdb_node.words[1] |= (v64 << 1) & 0x2u64;

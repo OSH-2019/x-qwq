@@ -111,7 +111,7 @@ pub fn seL4_MessageInfo_new(label:u64,capsUnwrapped:u64,extraCaps:u64,length:u64
 }
 
 //include/api/types.h
-const seL4_MsgMaxLength:u64=120;
+pub const seL4_MsgMaxLength:u64=120;
 pub fn messageInfoFromWord(w:word_t)->seL4_MessageInfo_t{
     let mut mi:seL4_MessageInfo_t=seL4_MessageInfo_t{
         words:[w]
@@ -125,4 +125,21 @@ pub fn messageInfoFromWord(w:word_t)->seL4_MessageInfo_t{
 
 pub fn wordFromMessageInfo(mi:seL4_MessageInfo_t)->word_t{
     mi.words[0]
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct cap_transfer_t {
+    pub ctReceiveRoot: u64,
+    pub ctReceiveIndex: u64,
+    pub ctReceiveDepth: u64,
+}
+
+#[inline]
+pub unsafe fn capTransferFromWords(wptr: *mut u64) -> cap_transfer_t {
+    cap_transfer_t {
+        ctReceiveRoot: *wptr.offset(0),
+        ctReceiveIndex: *wptr.offset(1),
+        ctReceiveDepth: *wptr.offset(2),
+    }
 }

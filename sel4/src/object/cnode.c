@@ -788,46 +788,46 @@ decodeCNodeInvocation(word_t invLabel, word_t length, cap_t cap,
 //    }
 //}
 
-bool_t PURE
-isMDBParentOf(cte_t *cte_a, cte_t *cte_b)
-{
-    if (!mdb_node_get_mdbRevocable(cte_a->cteMDBNode)) {
-        return false;
-    }
-    if (!sameRegionAs(cte_a->cap, cte_b->cap)) {
-        return false;
-    }
-    switch (cap_get_capType(cte_a->cap)) {
-    case cap_endpoint_cap: {
-        word_t badge;
-
-        badge = cap_endpoint_cap_get_capEPBadge(cte_a->cap);
-        if (badge == 0) {
-            return true;
-        }
-        return (badge == cap_endpoint_cap_get_capEPBadge(cte_b->cap)) &&
-               !mdb_node_get_mdbFirstBadged(cte_b->cteMDBNode);
-        break;
-    }
-
-    case cap_notification_cap: {
-        word_t badge;
-
-        badge = cap_notification_cap_get_capNtfnBadge(cte_a->cap);
-        if (badge == 0) {
-            return true;
-        }
-        return
-            (badge == cap_notification_cap_get_capNtfnBadge(cte_b->cap)) &&
-            !mdb_node_get_mdbFirstBadged(cte_b->cteMDBNode);
-        break;
-    }
-
-    default:
-        return true;
-        break;
-    }
-}
+//bool_t PURE
+//isMDBParentOf(cte_t *cte_a, cte_t *cte_b)
+//{
+//    if (!mdb_node_get_mdbRevocable(cte_a->cteMDBNode)) {
+//        return false;
+//    }
+//    if (!sameRegionAs(cte_a->cap, cte_b->cap)) {
+//        return false;
+//    }
+//    switch (cap_get_capType(cte_a->cap)) {
+//    case cap_endpoint_cap: {
+//        word_t badge;
+//
+//        badge = cap_endpoint_cap_get_capEPBadge(cte_a->cap);
+//        if (badge == 0) {
+//            return true;
+//        }
+//        return (badge == cap_endpoint_cap_get_capEPBadge(cte_b->cap)) &&
+//               !mdb_node_get_mdbFirstBadged(cte_b->cteMDBNode);
+//        break;
+//    }
+//
+//    case cap_notification_cap: {
+//        word_t badge;
+//
+//        badge = cap_notification_cap_get_capNtfnBadge(cte_a->cap);
+//        if (badge == 0) {
+//            return true;
+//        }
+//        return
+//            (badge == cap_notification_cap_get_capNtfnBadge(cte_b->cap)) &&
+//            !mdb_node_get_mdbFirstBadged(cte_b->cteMDBNode);
+//        break;
+//    }
+//
+//    default:
+//        return true;
+//        break;
+//    }
+//}
 
 //exception_t
 //ensureNoChildren(cte_t *slot)
@@ -856,96 +856,96 @@ isMDBParentOf(cte_t *cte_a, cte_t *cte_b)
 //    return EXCEPTION_NONE;
 //}
 
-bool_t PURE
-isFinalCapability(cte_t *cte)
-{
-    mdb_node_t mdb;
-    bool_t prevIsSameObject;
+//bool_t PURE
+//isFinalCapability(cte_t *cte)
+//{
+//    mdb_node_t mdb;
+//    bool_t prevIsSameObject;
+//
+//    mdb = cte->cteMDBNode;
+//
+//    if (mdb_node_get_mdbPrev(mdb) == 0) {
+//        prevIsSameObject = false;
+//    } else {
+//        cte_t *prev;
+//
+//        prev = CTE_PTR(mdb_node_get_mdbPrev(mdb));
+//        prevIsSameObject = sameObjectAs(prev->cap, cte->cap);
+//    }
+//
+//    if (prevIsSameObject) {
+//        return false;
+//    } else {
+//        if (mdb_node_get_mdbNext(mdb) == 0) {
+//            return true;
+//        } else {
+//            cte_t *next;
+//
+//            next = CTE_PTR(mdb_node_get_mdbNext(mdb));
+//            return !sameObjectAs(cte->cap, next->cap);
+//        }
+//    }
+//}
 
-    mdb = cte->cteMDBNode;
-
-    if (mdb_node_get_mdbPrev(mdb) == 0) {
-        prevIsSameObject = false;
-    } else {
-        cte_t *prev;
-
-        prev = CTE_PTR(mdb_node_get_mdbPrev(mdb));
-        prevIsSameObject = sameObjectAs(prev->cap, cte->cap);
-    }
-
-    if (prevIsSameObject) {
-        return false;
-    } else {
-        if (mdb_node_get_mdbNext(mdb) == 0) {
-            return true;
-        } else {
-            cte_t *next;
-
-            next = CTE_PTR(mdb_node_get_mdbNext(mdb));
-            return !sameObjectAs(cte->cap, next->cap);
-        }
-    }
-}
-
-bool_t PURE
-slotCapLongRunningDelete(cte_t *slot)
-{
-    if (cap_get_capType(slot->cap) == cap_null_cap) {
-        return false;
-    } else if (! isFinalCapability(slot)) {
-        return false;
-    }
-    switch (cap_get_capType(slot->cap)) {
-    case cap_thread_cap:
-    case cap_zombie_cap:
-    case cap_cnode_cap:
-        return true;
-    default:
-        return false;
-    }
-}
+//bool_t PURE
+//slotCapLongRunningDelete(cte_t *slot)
+//{
+//    if (cap_get_capType(slot->cap) == cap_null_cap) {
+//        return false;
+//    } else if (! isFinalCapability(slot)) {
+//        return false;
+//    }
+//    switch (cap_get_capType(slot->cap)) {
+//    case cap_thread_cap:
+//    case cap_zombie_cap:
+//    case cap_cnode_cap:
+//        return true;
+//    default:
+//        return false;
+//    }
+//}
 
 /* This implementation is specialised to the (current) limit
  * of one cap receive slot. */
-cte_t *
-getReceiveSlots(tcb_t *thread, word_t *buffer)
-{
-    cap_transfer_t ct;
-    cptr_t cptr;
-    lookupCap_ret_t luc_ret;
-    lookupSlot_ret_t lus_ret;
-    cte_t *slot;
-    cap_t cnode;
+//cte_t *
+//getReceiveSlots(tcb_t *thread, word_t *buffer)
+//{
+//    cap_transfer_t ct;
+//    cptr_t cptr;
+//    lookupCap_ret_t luc_ret;
+//    lookupSlot_ret_t lus_ret;
+//    cte_t *slot;
+//    cap_t cnode;
+//
+//    if (!buffer) {
+//        return NULL;
+//    }
+//
+//    ct = loadCapTransfer(buffer);
+//    cptr = ct.ctReceiveRoot;
+//
+//    luc_ret = lookupCap(thread, cptr);
+//    if (luc_ret.status != EXCEPTION_NONE) {
+//        return NULL;
+//    }
+//    cnode = luc_ret.cap;
+//
+//    lus_ret = lookupTargetSlot(cnode, ct.ctReceiveIndex, ct.ctReceiveDepth);
+//    if (lus_ret.status != EXCEPTION_NONE) {
+//        return NULL;
+//    }
+//    slot = lus_ret.slot;
+//
+//    if (cap_get_capType(slot->cap) != cap_null_cap) {
+//        return NULL;
+//    }
+//
+//    return slot;
+//}
 
-    if (!buffer) {
-        return NULL;
-    }
-
-    ct = loadCapTransfer(buffer);
-    cptr = ct.ctReceiveRoot;
-
-    luc_ret = lookupCap(thread, cptr);
-    if (luc_ret.status != EXCEPTION_NONE) {
-        return NULL;
-    }
-    cnode = luc_ret.cap;
-
-    lus_ret = lookupTargetSlot(cnode, ct.ctReceiveIndex, ct.ctReceiveDepth);
-    if (lus_ret.status != EXCEPTION_NONE) {
-        return NULL;
-    }
-    slot = lus_ret.slot;
-
-    if (cap_get_capType(slot->cap) != cap_null_cap) {
-        return NULL;
-    }
-
-    return slot;
-}
-
-cap_transfer_t PURE
-loadCapTransfer(word_t *buffer)
-{
-    const int offset = seL4_MsgMaxLength + seL4_MsgMaxExtraCaps + 2;
-    return capTransferFromWords(buffer + offset);
-}
+//cap_transfer_t PURE
+//loadCapTransfer(word_t *buffer)
+//{
+//    const int offset = seL4_MsgMaxLength + seL4_MsgMaxExtraCaps + 2;
+//    return capTransferFromWords(buffer + offset);
+//}
