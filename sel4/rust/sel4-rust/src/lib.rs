@@ -17,6 +17,7 @@ pub mod cspace;
 pub mod registerset;
 pub mod failures;
 pub mod syscall;
+pub mod invocation;
 
 #[allow(unused_attributes)]
 #[no_mangle] pub unsafe extern "C" fn rust_add(a: i32, b: i32) -> i32 {

@@ -117,6 +117,7 @@ pub fn seL4_MessageInfo_new(label:u64,capsUnwrapped:u64,extraCaps:u64,length:u64
 
 //include/api/types.h
 pub const seL4_MsgMaxLength:u64=120;
+#[inline]
 pub fn messageInfoFromWord(w:word_t)->seL4_MessageInfo_t{
     let mut mi:seL4_MessageInfo_t=seL4_MessageInfo_t{
         words:[w]
@@ -128,8 +129,22 @@ pub fn messageInfoFromWord(w:word_t)->seL4_MessageInfo_t{
     mi
 }
 
+#[inline]
 pub fn wordFromMessageInfo(mi:seL4_MessageInfo_t)->word_t{
     mi.words[0]
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct seL4_CapRights_t {
+    words: [u64; 1],
+}
+
+#[inline]
+pub fn rightsFromWord(w: u64) -> seL4_CapRights_t {
+    seL4_CapRights_t {
+        words: [w]
+    }
 }
 
 #[repr(C)]

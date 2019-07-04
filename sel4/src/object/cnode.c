@@ -27,288 +27,288 @@
 #include <util.h>
 #include <object/endpoint.h>
 
-struct finaliseSlot_ret {
-    exception_t status;
-    bool_t success;
-    cap_t cleanupInfo;
-};
-typedef struct finaliseSlot_ret finaliseSlot_ret_t;
+//struct finaliseSlot_ret {
+//    exception_t status;
+//    bool_t success;
+//    cap_t cleanupInfo;
+//};
+//typedef struct finaliseSlot_ret finaliseSlot_ret_t;
 
 //static finaliseSlot_ret_t finaliseSlot(cte_t *slot, bool_t exposed);
 //static void emptySlot(cte_t *slot, cap_t cleanupInfo);
 //static exception_t reduceZombie(cte_t* slot, bool_t exposed);
 
-exception_t
-decodeCNodeInvocation(word_t invLabel, word_t length, cap_t cap,
-                      extra_caps_t excaps, word_t *buffer)
-{
-    lookupSlot_ret_t lu_ret;
-    cte_t *destSlot;
-    word_t index, w_bits;
-    exception_t status;
-
-    /* Haskell error: "decodeCNodeInvocation: invalid cap" */
-    assert(cap_get_capType(cap) == cap_cnode_cap);
-
-    if (invLabel < CNodeRevoke || invLabel > CNodeSaveCaller) {
-        userError("CNodeCap: Illegal Operation attempted.");
-        current_syscall_error.type = seL4_IllegalOperation;
-        return EXCEPTION_SYSCALL_ERROR;
-    }
-
-    if (length < 2) {
-        userError("CNode operation: Truncated message.");
-        current_syscall_error.type = seL4_TruncatedMessage;
-        return EXCEPTION_SYSCALL_ERROR;
-    }
-    index = getSyscallArg(0, buffer);
-    w_bits = getSyscallArg(1, buffer);
-
-    lu_ret = lookupTargetSlot(cap, index, w_bits);
-    if (lu_ret.status != EXCEPTION_NONE) {
-        userError("CNode operation: Target slot invalid.");
-        return lu_ret.status;
-    }
-    destSlot = lu_ret.slot;
-
-    if (invLabel >= CNodeCopy && invLabel <= CNodeMutate) {
-        cte_t *srcSlot;
-        word_t srcIndex, srcDepth, capData;
-        bool_t isMove;
-        seL4_CapRights_t cap_rights;
-        cap_t srcRoot, newCap;
-        deriveCap_ret_t dc_ret;
-        cap_t srcCap;
-
-        if (length < 4 || excaps.excaprefs[0] == NULL) {
-            userError("CNode Copy/Mint/Move/Mutate: Truncated message.");
-            current_syscall_error.type = seL4_TruncatedMessage;
-            return EXCEPTION_SYSCALL_ERROR;
-        }
-        srcIndex = getSyscallArg(2, buffer);
-        srcDepth = getSyscallArg(3, buffer);
-
-        srcRoot = excaps.excaprefs[0]->cap;
-
-        status = ensureEmptySlot(destSlot);
-        if (status != EXCEPTION_NONE) {
-            userError("CNode Copy/Mint/Move/Mutate: Destination not empty.");
-            return status;
-        }
-
-        lu_ret = lookupSourceSlot(srcRoot, srcIndex, srcDepth);
-        if (lu_ret.status != EXCEPTION_NONE) {
-            userError("CNode Copy/Mint/Move/Mutate: Invalid source slot.");
-            return lu_ret.status;
-        }
-        srcSlot = lu_ret.slot;
-
-        if (cap_get_capType(srcSlot->cap) == cap_null_cap) {
-            userError("CNode Copy/Mint/Move/Mutate: Source slot invalid or empty.");
-            current_syscall_error.type = seL4_FailedLookup;
-            current_syscall_error.failedLookupWasSource = 1;
-            current_lookup_fault =
-                lookup_fault_missing_capability_new(srcDepth);
-            return EXCEPTION_SYSCALL_ERROR;
-        }
-
-        switch (invLabel) {
-        case CNodeCopy:
-
-            if (length < 5) {
-                userError("Truncated message for CNode Copy operation.");
-                current_syscall_error.type = seL4_TruncatedMessage;
-                return EXCEPTION_SYSCALL_ERROR;
-            }
-
-            cap_rights = rightsFromWord(getSyscallArg(4, buffer));
-            srcCap = maskCapRights(cap_rights, srcSlot->cap);
-            dc_ret = deriveCap(srcSlot, srcCap);
-            if (dc_ret.status != EXCEPTION_NONE) {
-                userError("Error deriving cap for CNode Copy operation.");
-                return dc_ret.status;
-            }
-            newCap = dc_ret.cap;
-            isMove = false;
-
-            break;
-
-        case CNodeMint:
-            if (length < 6) {
-                userError("CNode Mint: Truncated message.");
-                current_syscall_error.type = seL4_TruncatedMessage;
-                return EXCEPTION_SYSCALL_ERROR;
-            }
-
-            cap_rights = rightsFromWord(getSyscallArg(4, buffer));
-            capData = getSyscallArg(5, buffer);
-            srcCap = maskCapRights(cap_rights, srcSlot->cap);
-            dc_ret = deriveCap(srcSlot,
-                               updateCapData(false, capData, srcCap));
-            if (dc_ret.status != EXCEPTION_NONE) {
-                userError("Error deriving cap for CNode Mint operation.");
-                return dc_ret.status;
-            }
-            newCap = dc_ret.cap;
-            isMove = false;
-
-            break;
-
-        case CNodeMove:
-            newCap = srcSlot->cap;
-            isMove = true;
-
-            break;
-
-        case CNodeMutate:
-            if (length < 5) {
-                userError("CNode Mutate: Truncated message.");
-                current_syscall_error.type = seL4_TruncatedMessage;
-                return EXCEPTION_SYSCALL_ERROR;
-            }
-
-            capData = getSyscallArg(4, buffer);
-            newCap = updateCapData(true, capData, srcSlot->cap);
-            isMove = true;
-
-            break;
-
-        default:
-            assert (0);
-            return EXCEPTION_NONE;
-        }
-
-        if (cap_get_capType(newCap) == cap_null_cap) {
-            userError("CNode Copy/Mint/Move/Mutate: Mutated cap would be invalid.");
-            current_syscall_error.type = seL4_IllegalOperation;
-            return EXCEPTION_SYSCALL_ERROR;
-        }
-
-        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
-        if (isMove) {
-            return invokeCNodeMove(newCap, srcSlot, destSlot);
-        } else {
-            return invokeCNodeInsert(newCap, srcSlot, destSlot);
-        }
-    }
-
-    if (invLabel == CNodeRevoke) {
-        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
-        return invokeCNodeRevoke(destSlot);
-    }
-
-    if (invLabel == CNodeDelete) {
-        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
-        return invokeCNodeDelete(destSlot);
-    }
-
-    if (invLabel == CNodeSaveCaller) {
-        status = ensureEmptySlot(destSlot);
-        if (status != EXCEPTION_NONE) {
-            userError("CNode SaveCaller: Destination slot not empty.");
-            return status;
-        }
-
-        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
-        return invokeCNodeSaveCaller(destSlot);
-    }
-
-    if (invLabel == CNodeCancelBadgedSends) {
-        cap_t destCap;
-
-        destCap = destSlot->cap;
-
-        if (!hasCancelSendRights(destCap)) {
-            userError("CNode CancelBadgedSends: Target cap invalid.");
-            current_syscall_error.type = seL4_IllegalOperation;
-            return EXCEPTION_SYSCALL_ERROR;
-        }
-        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
-        return invokeCNodeCancelBadgedSends(destCap);
-    }
-
-    if (invLabel == CNodeRotate) {
-        word_t pivotNewData, pivotIndex, pivotDepth;
-        word_t srcNewData, srcIndex, srcDepth;
-        cte_t *pivotSlot, *srcSlot;
-        cap_t pivotRoot, srcRoot, newSrcCap, newPivotCap;
-
-        if (length < 8 || excaps.excaprefs[0] == NULL
-                || excaps.excaprefs[1] == NULL) {
-            current_syscall_error.type = seL4_TruncatedMessage;
-            return EXCEPTION_SYSCALL_ERROR;
-        }
-        pivotNewData = getSyscallArg(2, buffer);
-        pivotIndex   = getSyscallArg(3, buffer);
-        pivotDepth   = getSyscallArg(4, buffer);
-        srcNewData   = getSyscallArg(5, buffer);
-        srcIndex     = getSyscallArg(6, buffer);
-        srcDepth     = getSyscallArg(7, buffer);
-
-        pivotRoot = excaps.excaprefs[0]->cap;
-        srcRoot   = excaps.excaprefs[1]->cap;
-
-        lu_ret = lookupSourceSlot(srcRoot, srcIndex, srcDepth);
-        if (lu_ret.status != EXCEPTION_NONE) {
-            return lu_ret.status;
-        }
-        srcSlot = lu_ret.slot;
-
-        lu_ret = lookupPivotSlot(pivotRoot, pivotIndex, pivotDepth);
-        if (lu_ret.status != EXCEPTION_NONE) {
-            return lu_ret.status;
-        }
-        pivotSlot = lu_ret.slot;
-
-        if (pivotSlot == srcSlot || pivotSlot == destSlot) {
-            userError("CNode Rotate: Pivot slot the same as source or dest slot.");
-            current_syscall_error.type = seL4_IllegalOperation;
-            return EXCEPTION_SYSCALL_ERROR;
-        }
-
-        if (srcSlot != destSlot) {
-            status = ensureEmptySlot(destSlot);
-            if (status != EXCEPTION_NONE) {
-                return status;
-            }
-        }
-
-        if (cap_get_capType(srcSlot->cap) == cap_null_cap) {
-            current_syscall_error.type = seL4_FailedLookup;
-            current_syscall_error.failedLookupWasSource = 1;
-            current_lookup_fault = lookup_fault_missing_capability_new(srcDepth);
-            return EXCEPTION_SYSCALL_ERROR;
-        }
-
-        if (cap_get_capType(pivotSlot->cap) == cap_null_cap) {
-            current_syscall_error.type = seL4_FailedLookup;
-            current_syscall_error.failedLookupWasSource = 0;
-            current_lookup_fault = lookup_fault_missing_capability_new(pivotDepth);
-            return EXCEPTION_SYSCALL_ERROR;
-        }
-
-        newSrcCap = updateCapData(true, srcNewData, srcSlot->cap);
-        newPivotCap = updateCapData(true, pivotNewData, pivotSlot->cap);
-
-        if (cap_get_capType(newSrcCap) == cap_null_cap) {
-            userError("CNode Rotate: Source cap invalid.");
-            current_syscall_error.type = seL4_IllegalOperation;
-            return EXCEPTION_SYSCALL_ERROR;
-        }
-
-        if (cap_get_capType(newPivotCap) == cap_null_cap) {
-            userError("CNode Rotate: Pivot cap invalid.");
-            current_syscall_error.type = seL4_IllegalOperation;
-            return EXCEPTION_SYSCALL_ERROR;
-        }
-
-        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
-        return invokeCNodeRotate(newSrcCap, newPivotCap,
-                                 srcSlot, pivotSlot, destSlot);
-    }
-
-    return EXCEPTION_NONE;
-}
+//exception_t
+//decodeCNodeInvocation(word_t invLabel, word_t length, cap_t cap,
+//                      extra_caps_t excaps, word_t *buffer)
+//{
+//    lookupSlot_ret_t lu_ret;
+//    cte_t *destSlot;
+//    word_t index, w_bits;
+//    exception_t status;
+//
+//    /* Haskell error: "decodeCNodeInvocation: invalid cap" */
+//    assert(cap_get_capType(cap) == cap_cnode_cap);
+//
+//    if (invLabel < CNodeRevoke || invLabel > CNodeSaveCaller) {
+//        userError("CNodeCap: Illegal Operation attempted.");
+//        current_syscall_error.type = seL4_IllegalOperation;
+//        return EXCEPTION_SYSCALL_ERROR;
+//    }
+//
+//    if (length < 2) {
+//        userError("CNode operation: Truncated message.");
+//        current_syscall_error.type = seL4_TruncatedMessage;
+//        return EXCEPTION_SYSCALL_ERROR;
+//    }
+//    index = getSyscallArg(0, buffer);
+//    w_bits = getSyscallArg(1, buffer);
+//
+//    lu_ret = lookupTargetSlot(cap, index, w_bits);
+//    if (lu_ret.status != EXCEPTION_NONE) {
+//        userError("CNode operation: Target slot invalid.");
+//        return lu_ret.status;
+//    }
+//    destSlot = lu_ret.slot;
+//
+//    if (invLabel >= CNodeCopy && invLabel <= CNodeMutate) {
+//        cte_t *srcSlot;
+//        word_t srcIndex, srcDepth, capData;
+//        bool_t isMove;
+//        seL4_CapRights_t cap_rights;
+//        cap_t srcRoot, newCap;
+//        deriveCap_ret_t dc_ret;
+//        cap_t srcCap;
+//
+//        if (length < 4 || excaps.excaprefs[0] == NULL) {
+//            userError("CNode Copy/Mint/Move/Mutate: Truncated message.");
+//            current_syscall_error.type = seL4_TruncatedMessage;
+//            return EXCEPTION_SYSCALL_ERROR;
+//        }
+//        srcIndex = getSyscallArg(2, buffer);
+//        srcDepth = getSyscallArg(3, buffer);
+//
+//        srcRoot = excaps.excaprefs[0]->cap;
+//
+//        status = ensureEmptySlot(destSlot);
+//        if (status != EXCEPTION_NONE) {
+//            userError("CNode Copy/Mint/Move/Mutate: Destination not empty.");
+//            return status;
+//        }
+//
+//        lu_ret = lookupSourceSlot(srcRoot, srcIndex, srcDepth);
+//        if (lu_ret.status != EXCEPTION_NONE) {
+//            userError("CNode Copy/Mint/Move/Mutate: Invalid source slot.");
+//            return lu_ret.status;
+//        }
+//        srcSlot = lu_ret.slot;
+//
+//        if (cap_get_capType(srcSlot->cap) == cap_null_cap) {
+//            userError("CNode Copy/Mint/Move/Mutate: Source slot invalid or empty.");
+//            current_syscall_error.type = seL4_FailedLookup;
+//            current_syscall_error.failedLookupWasSource = 1;
+//            current_lookup_fault =
+//                lookup_fault_missing_capability_new(srcDepth);
+//            return EXCEPTION_SYSCALL_ERROR;
+//        }
+//
+//        switch (invLabel) {
+//        case CNodeCopy:
+//
+//            if (length < 5) {
+//                userError("Truncated message for CNode Copy operation.");
+//                current_syscall_error.type = seL4_TruncatedMessage;
+//                return EXCEPTION_SYSCALL_ERROR;
+//            }
+//
+//            cap_rights = rightsFromWord(getSyscallArg(4, buffer));
+//            srcCap = maskCapRights(cap_rights, srcSlot->cap);
+//            dc_ret = deriveCap(srcSlot, srcCap);
+//            if (dc_ret.status != EXCEPTION_NONE) {
+//                userError("Error deriving cap for CNode Copy operation.");
+//                return dc_ret.status;
+//            }
+//            newCap = dc_ret.cap;
+//            isMove = false;
+//
+//            break;
+//
+//        case CNodeMint:
+//            if (length < 6) {
+//                userError("CNode Mint: Truncated message.");
+//                current_syscall_error.type = seL4_TruncatedMessage;
+//                return EXCEPTION_SYSCALL_ERROR;
+//            }
+//
+//            cap_rights = rightsFromWord(getSyscallArg(4, buffer));
+//            capData = getSyscallArg(5, buffer);
+//            srcCap = maskCapRights(cap_rights, srcSlot->cap);
+//            dc_ret = deriveCap(srcSlot,
+//                               updateCapData(false, capData, srcCap));
+//            if (dc_ret.status != EXCEPTION_NONE) {
+//                userError("Error deriving cap for CNode Mint operation.");
+//                return dc_ret.status;
+//            }
+//            newCap = dc_ret.cap;
+//            isMove = false;
+//
+//            break;
+//
+//        case CNodeMove:
+//            newCap = srcSlot->cap;
+//            isMove = true;
+//
+//            break;
+//
+//        case CNodeMutate:
+//            if (length < 5) {
+//                userError("CNode Mutate: Truncated message.");
+//                current_syscall_error.type = seL4_TruncatedMessage;
+//                return EXCEPTION_SYSCALL_ERROR;
+//            }
+//
+//            capData = getSyscallArg(4, buffer);
+//            newCap = updateCapData(true, capData, srcSlot->cap);
+//            isMove = true;
+//
+//            break;
+//
+//        default:
+//            assert (0);
+//            return EXCEPTION_NONE;
+//        }
+//
+//        if (cap_get_capType(newCap) == cap_null_cap) {
+//            userError("CNode Copy/Mint/Move/Mutate: Mutated cap would be invalid.");
+//            current_syscall_error.type = seL4_IllegalOperation;
+//            return EXCEPTION_SYSCALL_ERROR;
+//        }
+//
+//        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
+//        if (isMove) {
+//            return invokeCNodeMove(newCap, srcSlot, destSlot);
+//        } else {
+//            return invokeCNodeInsert(newCap, srcSlot, destSlot);
+//        }
+//    }
+//
+//    if (invLabel == CNodeRevoke) {
+//        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
+//        return invokeCNodeRevoke(destSlot);
+//    }
+//
+//    if (invLabel == CNodeDelete) {
+//        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
+//        return invokeCNodeDelete(destSlot);
+//    }
+//
+//    if (invLabel == CNodeSaveCaller) {
+//        status = ensureEmptySlot(destSlot);
+//        if (status != EXCEPTION_NONE) {
+//            userError("CNode SaveCaller: Destination slot not empty.");
+//            return status;
+//        }
+//
+//        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
+//        return invokeCNodeSaveCaller(destSlot);
+//    }
+//
+//    if (invLabel == CNodeCancelBadgedSends) {
+//        cap_t destCap;
+//
+//        destCap = destSlot->cap;
+//
+//        if (!hasCancelSendRights(destCap)) {
+//            userError("CNode CancelBadgedSends: Target cap invalid.");
+//            current_syscall_error.type = seL4_IllegalOperation;
+//            return EXCEPTION_SYSCALL_ERROR;
+//        }
+//        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
+//        return invokeCNodeCancelBadgedSends(destCap);
+//    }
+//
+//    if (invLabel == CNodeRotate) {
+//        word_t pivotNewData, pivotIndex, pivotDepth;
+//        word_t srcNewData, srcIndex, srcDepth;
+//        cte_t *pivotSlot, *srcSlot;
+//        cap_t pivotRoot, srcRoot, newSrcCap, newPivotCap;
+//
+//        if (length < 8 || excaps.excaprefs[0] == NULL
+//                || excaps.excaprefs[1] == NULL) {
+//            current_syscall_error.type = seL4_TruncatedMessage;
+//            return EXCEPTION_SYSCALL_ERROR;
+//        }
+//        pivotNewData = getSyscallArg(2, buffer);
+//        pivotIndex   = getSyscallArg(3, buffer);
+//        pivotDepth   = getSyscallArg(4, buffer);
+//        srcNewData   = getSyscallArg(5, buffer);
+//        srcIndex     = getSyscallArg(6, buffer);
+//        srcDepth     = getSyscallArg(7, buffer);
+//
+//        pivotRoot = excaps.excaprefs[0]->cap;
+//        srcRoot   = excaps.excaprefs[1]->cap;
+//
+//        lu_ret = lookupSourceSlot(srcRoot, srcIndex, srcDepth);
+//        if (lu_ret.status != EXCEPTION_NONE) {
+//            return lu_ret.status;
+//        }
+//        srcSlot = lu_ret.slot;
+//
+//        lu_ret = lookupPivotSlot(pivotRoot, pivotIndex, pivotDepth);
+//        if (lu_ret.status != EXCEPTION_NONE) {
+//            return lu_ret.status;
+//        }
+//        pivotSlot = lu_ret.slot;
+//
+//        if (pivotSlot == srcSlot || pivotSlot == destSlot) {
+//            userError("CNode Rotate: Pivot slot the same as source or dest slot.");
+//            current_syscall_error.type = seL4_IllegalOperation;
+//            return EXCEPTION_SYSCALL_ERROR;
+//        }
+//
+//        if (srcSlot != destSlot) {
+//            status = ensureEmptySlot(destSlot);
+//            if (status != EXCEPTION_NONE) {
+//                return status;
+//            }
+//        }
+//
+//        if (cap_get_capType(srcSlot->cap) == cap_null_cap) {
+//            current_syscall_error.type = seL4_FailedLookup;
+//            current_syscall_error.failedLookupWasSource = 1;
+//            current_lookup_fault = lookup_fault_missing_capability_new(srcDepth);
+//            return EXCEPTION_SYSCALL_ERROR;
+//        }
+//
+//        if (cap_get_capType(pivotSlot->cap) == cap_null_cap) {
+//            current_syscall_error.type = seL4_FailedLookup;
+//            current_syscall_error.failedLookupWasSource = 0;
+//            current_lookup_fault = lookup_fault_missing_capability_new(pivotDepth);
+//            return EXCEPTION_SYSCALL_ERROR;
+//        }
+//
+//        newSrcCap = updateCapData(true, srcNewData, srcSlot->cap);
+//        newPivotCap = updateCapData(true, pivotNewData, pivotSlot->cap);
+//
+//        if (cap_get_capType(newSrcCap) == cap_null_cap) {
+//            userError("CNode Rotate: Source cap invalid.");
+//            current_syscall_error.type = seL4_IllegalOperation;
+//            return EXCEPTION_SYSCALL_ERROR;
+//        }
+//
+//        if (cap_get_capType(newPivotCap) == cap_null_cap) {
+//            userError("CNode Rotate: Pivot cap invalid.");
+//            current_syscall_error.type = seL4_IllegalOperation;
+//            return EXCEPTION_SYSCALL_ERROR;
+//        }
+//
+//        setThreadState(NODE_STATE(ksCurThread), ThreadState_Restart);
+//        return invokeCNodeRotate(newSrcCap, newPivotCap,
+//                                 srcSlot, pivotSlot, destSlot);
+//    }
+//
+//    return EXCEPTION_NONE;
+//}
 
 //exception_t
 //invokeCNodeRevoke(cte_t *destSlot)

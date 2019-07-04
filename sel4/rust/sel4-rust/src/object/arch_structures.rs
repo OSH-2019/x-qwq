@@ -659,6 +659,14 @@ pub fn lookup_fault_guard_mismatch_get_bitsLeft(lookup_fault: lookup_fault_t) ->
 }
 
 #[inline]
+pub fn lookup_fault_missing_capability_new(bitsLeft: u64) -> lookup_fault_t {
+    lookup_fault_t {
+        words: [((bitsLeft & 0x7fu64) << 2) |
+        ((lookup_fault_tag_t::lookup_fault_missing_capability as u64) & 0x3u64), 0],
+    }
+}
+
+#[inline]
 pub unsafe fn notification_ptr_get_ntfnQueue_head(notification_ptr: *mut notification_t) -> u64 {
     let mut ret = (*notification_ptr).words[1] & 0xffffffffffffu64;
     if (ret & (1u64 << 47)) != 0u64 {

@@ -15,8 +15,8 @@ pub enum seL4_Error {
     seL4_NumErrors = 11,
 }
 
-//#[macro_export]
-//
-//macro_rules! userError {
-//    ($x:expr) => {}
-//}
+#[macro_export]
+
+macro_rules! userError {
+    ($x:expr) => {}
+}
