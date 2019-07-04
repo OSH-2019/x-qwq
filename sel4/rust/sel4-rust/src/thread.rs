@@ -34,6 +34,7 @@ extern "C"{
     fn Arch_activateIdleThread(tcb:*mut tcb_t); //这个函数其实是空的
     fn Arch_switchToThread(tcb:*mut tcb_t);
     fn Arch_switchToIdleThread();
+    fn Arch_configureIdleThread(tcb: *mut tcb_t);
     //src/object/endpoint.c
     fn cancelIPC(tptr:*mut tcb_t);
     //src/arch/x86/machine/hardware.c
@@ -123,6 +124,13 @@ pub extern "C" fn isBlocked(thread:*const tcb_t)->bool_t{
     }else{
         _bool::r#false as u64
     }
+}
+
+#[no_mangle]
+#[link_section = ".boot.text"]
+pub unsafe extern "C" fn configureIdleThread(tcb: *mut tcb_t) {
+    Arch_configureIdleThread(tcb);
+    setThreadState(tcb, _thread_state::ThreadState_IdleThreadState as u64);
 }
 
 #[no_mangle]

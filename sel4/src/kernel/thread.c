@@ -65,13 +65,12 @@ isBlocked(const tcb_t *thread)
 }
 */
 
-//这个函数与boot有关，我先不改它= =
-BOOT_CODE void
-configureIdleThread(tcb_t *tcb)
-{
-    Arch_configureIdleThread(tcb);
-    setThreadState(tcb, ThreadState_IdleThreadState);
-}
+//BOOT_CODE void
+//configureIdleThread(tcb_t *tcb)
+//{
+//    Arch_configureIdleThread(tcb);
+//    setThreadState(tcb, ThreadState_IdleThreadState);
+//}
 
 /*
 void
