@@ -231,61 +231,61 @@ doFaultTransfer(word_t badge, tcb_t *sender, tcb_t *receiver,
 */
 
 /* Like getReceiveSlots, this is specialised for single-cap transfer. */
-seL4_MessageInfo_t
-transferCaps(seL4_MessageInfo_t info, extra_caps_t caps,
-             endpoint_t *endpoint, tcb_t *receiver,
-             word_t *receiveBuffer)
-{
-    word_t i;
-    cte_t* destSlot;
-
-    info = seL4_MessageInfo_set_extraCaps(info, 0);
-    info = seL4_MessageInfo_set_capsUnwrapped(info, 0);
-
-    if (likely(!caps.excaprefs[0] || !receiveBuffer)) {
-        return info;
-    }
-
-    destSlot = getReceiveSlots(receiver, receiveBuffer);
-
-    for (i = 0; i < seL4_MsgMaxExtraCaps && caps.excaprefs[i] != NULL; i++) {
-        cte_t *slot = caps.excaprefs[i];
-        cap_t cap = slot->cap;
-
-        if (cap_get_capType(cap) == cap_endpoint_cap &&
-                EP_PTR(cap_endpoint_cap_get_capEPPtr(cap)) == endpoint) {
-            /* If this is a cap to the endpoint on which the message was sent,
-             * only transfer the badge, not the cap. */
-            setExtraBadge(receiveBuffer,
-                          cap_endpoint_cap_get_capEPBadge(cap), i);
-
-            info = seL4_MessageInfo_set_capsUnwrapped(info,
-                                                      seL4_MessageInfo_get_capsUnwrapped(info) | (1 << i));
-
-        } else {
-            deriveCap_ret_t dc_ret;
-
-            if (!destSlot) {
-                break;
-            }
-
-            dc_ret = deriveCap(slot, cap);
-
-            if (dc_ret.status != EXCEPTION_NONE) {
-                break;
-            }
-            if (cap_get_capType(dc_ret.cap) == cap_null_cap) {
-                break;
-            }
-
-            cteInsert(dc_ret.cap, slot, destSlot);
-
-            destSlot = NULL;
-        }
-    }
-
-    return seL4_MessageInfo_set_extraCaps(info, i);
-}
+//seL4_MessageInfo_t
+//transferCaps(seL4_MessageInfo_t info, extra_caps_t caps,
+//             endpoint_t *endpoint, tcb_t *receiver,
+//             word_t *receiveBuffer)
+//{
+//    word_t i;
+//    cte_t* destSlot;
+//
+//    info = seL4_MessageInfo_set_extraCaps(info, 0);
+//    info = seL4_MessageInfo_set_capsUnwrapped(info, 0);
+//
+//    if (likely(!caps.excaprefs[0] || !receiveBuffer)) {
+//        return info;
+//    }
+//
+//    destSlot = getReceiveSlots(receiver, receiveBuffer);
+//
+//    for (i = 0; i < seL4_MsgMaxExtraCaps && caps.excaprefs[i] != NULL; i++) {
+//        cte_t *slot = caps.excaprefs[i];
+//        cap_t cap = slot->cap;
+//
+//        if (cap_get_capType(cap) == cap_endpoint_cap &&
+//                EP_PTR(cap_endpoint_cap_get_capEPPtr(cap)) == endpoint) {
+//            /* If this is a cap to the endpoint on which the message was sent,
+//             * only transfer the badge, not the cap. */
+//            setExtraBadge(receiveBuffer,
+//                          cap_endpoint_cap_get_capEPBadge(cap), i);
+//
+//            info = seL4_MessageInfo_set_capsUnwrapped(info,
+//                                                      seL4_MessageInfo_get_capsUnwrapped(info) | (1 << i));
+//
+//        } else {
+//            deriveCap_ret_t dc_ret;
+//
+//            if (!destSlot) {
+//                break;
+//            }
+//
+//            dc_ret = deriveCap(slot, cap);
+//
+//            if (dc_ret.status != EXCEPTION_NONE) {
+//                break;
+//            }
+//            if (cap_get_capType(dc_ret.cap) == cap_null_cap) {
+//                break;
+//            }
+//
+//            cteInsert(dc_ret.cap, slot, destSlot);
+//
+//            destSlot = NULL;
+//        }
+//    }
+//
+//    return seL4_MessageInfo_set_extraCaps(info, i);
+//}
 
 /*
 void doNBRecvFailedTransfer(tcb_t *thread)

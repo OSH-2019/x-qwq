@@ -282,6 +282,14 @@ pub fn cap_notification_cap_get_capNtfnPtr(cap: cap_t) -> u64 {
 }
 
 #[inline]
+pub fn cap_thread_cap_new(capTCBPtr: u64) -> cap_t {
+    cap_t {
+        words: [((cap_tag_t::cap_thread_cap as u64 & 0x1fu64) << 59) |
+            (capTCBPtr & 0xffffffffffffu64), 0],
+    }
+}
+
+#[inline]
 pub fn cap_thread_cap_get_capTCBPtr(cap: cap_t) -> u64 {
     let mut ret = cap.words[0] & 0xffffffffffffu64;
     if (ret & (1u64 << 47)) != 0u64 {
@@ -603,6 +611,11 @@ pub fn lookup_fault_invalid_root_new() -> lookup_fault_t {
 }
 
 #[inline]
+pub fn lookup_fault_get_lufType(lookup_fault: lookup_fault_t) -> u64 {
+    lookup_fault.words[0] & 0x3u64
+}
+
+#[inline]
 pub fn lookup_fault_depth_mismatch_new(bitsFound: u64, bitsLeft: u64) -> lookup_fault_t {
     lookup_fault_t {
         words: [((bitsFound & 0x7fu64) << 9) |
@@ -612,12 +625,37 @@ pub fn lookup_fault_depth_mismatch_new(bitsFound: u64, bitsLeft: u64) -> lookup_
 }
 
 #[inline]
+pub fn lookup_fault_depth_mismatch_get_bitsFound(lookup_fault: lookup_fault_t) -> u64 {
+    (lookup_fault.words[0] & 0xfe00u64) >> 9
+}
+
+#[inline]
+pub fn lookup_fault_depth_mismatch_get_bitsLeft(lookup_fault: lookup_fault_t) -> u64 {
+    (lookup_fault.words[0] & 0x1fu64) >> 2
+}
+
+#[inline]
+pub fn lookup_fault_missing_capability_get_bitsLeft(lookup_fault: lookup_fault_t) -> u64 {
+    (lookup_fault.words[0] & 0x1fcu64) >> 2
+}
+
+#[inline]
 pub fn lookup_fault_guard_mismatch_new(guardFound: u64, bitsLeft: u64, bitsFound: u64) -> lookup_fault_t {
     lookup_fault_t {
         words: [((bitsLeft & 0x7fu64) << 9) |
             ((bitsFound & 0x7fu64) << 2) |
             (lookup_fault_tag_t::lookup_fault_guard_mismatch as u64 & 0x3u64), guardFound],
     }
+}
+
+#[inline]
+pub fn lookup_fault_guard_mismatch_get_bitsFound(lookup_fault: lookup_fault_t) -> u64 {
+    (lookup_fault.words[0] & 0x1fcu64) >> 2
+}
+
+#[inline]
+pub fn lookup_fault_guard_mismatch_get_bitsLeft(lookup_fault: lookup_fault_t) -> u64 {
+    (lookup_fault.words[0] & 0xfe00u64) >> 9
 }
 
 #[inline]

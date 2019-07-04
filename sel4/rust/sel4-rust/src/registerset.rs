@@ -15,8 +15,12 @@ pub unsafe fn getRegister(thread:*mut tcb_t,reg:register_t)->word_t{
     (*thread).tcbArch.tcbContext.registers[reg as usize]
 }
 
-pub const seL4_FastMessageRegisters: usize = 0;
-pub const n_msgRegisters: usize = 0;
+pub const seL4_FastMessageRegisters: usize = 4;
+pub const n_msgRegisters: usize = 4;
+pub const n_frameRegisters: usize = 18;
+pub const n_gpRegisters: usize = 1;
+pub const n_exceptionMessage: usize = 3;
+pub const n_syscallMessage: usize = 18;
 
 pub const RDI: u32 = 0;
 pub const capRegister: u32 = 0;
@@ -47,3 +51,8 @@ pub const SS: u32 = 22;
 pub const n_contextRegisters: u32 = 23;
 
 pub const msgRegisters: [u32; 4] = [R10, R8, R9, R15];
+pub const frameRegisters: [u32; 18] = [
+    FaultIP, RSP, FLAGS, RAX, RBX, RCX, RDX, RSI, RDI, RBP,
+    R8, R9, R10, R11, R12, R13, R14, R15
+];
+pub const gpRegisters: [u32; 1] = [TLS_BASE];

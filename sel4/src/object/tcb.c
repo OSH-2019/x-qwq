@@ -32,51 +32,51 @@
 
 #define NULL_PRIO 0
 
-static inline unsigned int
-setMRs_lookup_failure(tcb_t *receiver, word_t* receiveIPCBuffer,
-                      lookup_fault_t luf, unsigned int offset)
-{
-    word_t lufType = lookup_fault_get_lufType(luf);
-    word_t i;
-
-    i = setMR(receiver, receiveIPCBuffer, offset, lufType + 1);
-
-    /* check constants match libsel4 */
-    if (offset == seL4_CapFault_LookupFailureType) {
-        assert(offset + 1 == seL4_CapFault_BitsLeft);
-        assert(offset + 2 == seL4_CapFault_DepthMismatch_BitsFound);
-        assert(offset + 2 == seL4_CapFault_GuardMismatch_GuardFound);
-        assert(offset + 3 == seL4_CapFault_GuardMismatch_BitsFound);
-    } else {
-        assert(offset == 1);
-    }
-
-    switch (lufType) {
-    case lookup_fault_invalid_root:
-        return i;
-
-    case lookup_fault_missing_capability:
-        return setMR(receiver, receiveIPCBuffer, offset + 1,
-                     lookup_fault_missing_capability_get_bitsLeft(luf));
-
-    case lookup_fault_depth_mismatch:
-        setMR(receiver, receiveIPCBuffer, offset + 1,
-              lookup_fault_depth_mismatch_get_bitsLeft(luf));
-        return setMR(receiver, receiveIPCBuffer, offset + 2,
-                     lookup_fault_depth_mismatch_get_bitsFound(luf));
-
-    case lookup_fault_guard_mismatch:
-        setMR(receiver, receiveIPCBuffer, offset + 1,
-              lookup_fault_guard_mismatch_get_bitsLeft(luf));
-        setMR(receiver, receiveIPCBuffer, offset + 2,
-              lookup_fault_guard_mismatch_get_guardFound(luf));
-        return setMR(receiver, receiveIPCBuffer, offset + 3,
-                     lookup_fault_guard_mismatch_get_bitsFound(luf));
-
-    default:
-        fail("Invalid lookup failure");
-    }
-}
+//static inline unsigned int
+//setMRs_lookup_failure(tcb_t *receiver, word_t* receiveIPCBuffer,
+//                      lookup_fault_t luf, unsigned int offset)
+//{
+//    word_t lufType = lookup_fault_get_lufType(luf);
+//    word_t i;
+//
+//    i = setMR(receiver, receiveIPCBuffer, offset, lufType + 1);
+//
+//    /* check constants match libsel4 */
+//    if (offset == seL4_CapFault_LookupFailureType) {
+//        assert(offset + 1 == seL4_CapFault_BitsLeft);
+//        assert(offset + 2 == seL4_CapFault_DepthMismatch_BitsFound);
+//        assert(offset + 2 == seL4_CapFault_GuardMismatch_GuardFound);
+//        assert(offset + 3 == seL4_CapFault_GuardMismatch_BitsFound);
+//    } else {
+//        assert(offset == 1);
+//    }
+//
+//    switch (lufType) {
+//    case lookup_fault_invalid_root:
+//        return i;
+//
+//    case lookup_fault_missing_capability:
+//        return setMR(receiver, receiveIPCBuffer, offset + 1,
+//                     lookup_fault_missing_capability_get_bitsLeft(luf));
+//
+//    case lookup_fault_depth_mismatch:
+//        setMR(receiver, receiveIPCBuffer, offset + 1,
+//              lookup_fault_depth_mismatch_get_bitsLeft(luf));
+//        return setMR(receiver, receiveIPCBuffer, offset + 2,
+//                     lookup_fault_depth_mismatch_get_bitsFound(luf));
+//
+//    case lookup_fault_guard_mismatch:
+//        setMR(receiver, receiveIPCBuffer, offset + 1,
+//              lookup_fault_guard_mismatch_get_bitsLeft(luf));
+//        setMR(receiver, receiveIPCBuffer, offset + 2,
+//              lookup_fault_guard_mismatch_get_guardFound(luf));
+//        return setMR(receiver, receiveIPCBuffer, offset + 3,
+//                     lookup_fault_guard_mismatch_get_bitsFound(luf));
+//
+//    default:
+//        fail("Invalid lookup failure");
+//    }
+//}
 
 static exception_t
 checkPrio(prio_t prio, tcb_t *auth)
@@ -99,36 +99,36 @@ checkPrio(prio_t prio, tcb_t *auth)
     return EXCEPTION_NONE;
 }
 
-static inline void
-addToBitmap(word_t cpu, word_t dom, word_t prio)
-{
-    word_t l1index;
-    word_t l1index_inverted;
+//static inline void
+//addToBitmap(word_t cpu, word_t dom, word_t prio)
+//{
+//    word_t l1index;
+//    word_t l1index_inverted;
+//
+//    l1index = prio_to_l1index(prio);
+//    l1index_inverted = invert_l1index(l1index);
+//
+//    NODE_STATE_ON_CORE(ksReadyQueuesL1Bitmap[dom], cpu) |= BIT(l1index);
+//    /* we invert the l1 index when accessed the 2nd level of the bitmap in
+//       order to increase the liklihood that high prio threads l2 index word will
+//       be on the same cache line as the l1 index word - this makes sure the
+//       fastpath is fastest for high prio threads */
+//    NODE_STATE_ON_CORE(ksReadyQueuesL2Bitmap[dom][l1index_inverted], cpu) |= BIT(prio & MASK(wordRadix));
+//}
 
-    l1index = prio_to_l1index(prio);
-    l1index_inverted = invert_l1index(l1index);
-
-    NODE_STATE_ON_CORE(ksReadyQueuesL1Bitmap[dom], cpu) |= BIT(l1index);
-    /* we invert the l1 index when accessed the 2nd level of the bitmap in
-       order to increase the liklihood that high prio threads l2 index word will
-       be on the same cache line as the l1 index word - this makes sure the
-       fastpath is fastest for high prio threads */
-    NODE_STATE_ON_CORE(ksReadyQueuesL2Bitmap[dom][l1index_inverted], cpu) |= BIT(prio & MASK(wordRadix));
-}
-
-static inline void
-removeFromBitmap(word_t cpu, word_t dom, word_t prio)
-{
-    word_t l1index;
-    word_t l1index_inverted;
-
-    l1index = prio_to_l1index(prio);
-    l1index_inverted = invert_l1index(l1index);
-    NODE_STATE_ON_CORE(ksReadyQueuesL2Bitmap[dom][l1index_inverted], cpu) &= ~BIT(prio & MASK(wordRadix));
-    if (unlikely(!NODE_STATE_ON_CORE(ksReadyQueuesL2Bitmap[dom][l1index_inverted], cpu))) {
-        NODE_STATE_ON_CORE(ksReadyQueuesL1Bitmap[dom], cpu) &= ~BIT(l1index);
-    }
-}
+//static inline void
+//removeFromBitmap(word_t cpu, word_t dom, word_t prio)
+//{
+//    word_t l1index;
+//    word_t l1index_inverted;
+//
+//    l1index = prio_to_l1index(prio);
+//    l1index_inverted = invert_l1index(l1index);
+//    NODE_STATE_ON_CORE(ksReadyQueuesL2Bitmap[dom][l1index_inverted], cpu) &= ~BIT(prio & MASK(wordRadix));
+//    if (unlikely(!NODE_STATE_ON_CORE(ksReadyQueuesL2Bitmap[dom][l1index_inverted], cpu))) {
+//        NODE_STATE_ON_CORE(ksReadyQueuesL1Bitmap[dom], cpu) &= ~BIT(l1index);
+//    }
+//}
 
 /* Add TCB to the head of a scheduler queue */
 //void
@@ -376,29 +376,29 @@ extra_caps_t current_extra_caps;
 //}
 
 /* Copy IPC MRs from one thread to another */
-word_t
-copyMRs(tcb_t *sender, word_t *sendBuf, tcb_t *receiver,
-        word_t *recvBuf, word_t n)
-{
-    word_t i;
-
-    /* Copy inline words */
-    for (i = 0; i < n && i < n_msgRegisters; i++) {
-        setRegister(receiver, msgRegisters[i],
-                    getRegister(sender, msgRegisters[i]));
-    }
-
-    if (!recvBuf || !sendBuf) {
-        return i;
-    }
-
-    /* Copy out-of-line words */
-    for (; i < n; i++) {
-        recvBuf[i + 1] = sendBuf[i + 1];
-    }
-
-    return i;
-}
+//word_t
+//copyMRs(tcb_t *sender, word_t *sendBuf, tcb_t *receiver,
+//        word_t *recvBuf, word_t n)
+//{
+//    word_t i;
+//
+//    /* Copy inline words */
+//    for (i = 0; i < n && i < n_msgRegisters; i++) {
+//        setRegister(receiver, msgRegisters[i],
+//                    getRegister(sender, msgRegisters[i]));
+//    }
+//
+//    if (!recvBuf || !sendBuf) {
+//        return i;
+//    }
+//
+//    /* Copy out-of-line words */
+//    for (; i < n; i++) {
+//        recvBuf[i + 1] = sendBuf[i + 1];
+//    }
+//
+//    return i;
+//}
 
 #ifdef ENABLE_SMP_SUPPORT
 /* This checks if the current updated to scheduler queue is changing the previous scheduling
@@ -1423,145 +1423,145 @@ decodeUnbindNotification(cap_t cap)
 
 /* The following functions sit in the preemption monad and implement the
  * preemptible, non-faulting bottom end of a TCB invocation. */
-exception_t
-invokeTCB_Suspend(tcb_t *thread)
-{
-    suspend(thread);
-    return EXCEPTION_NONE;
-}
+//exception_t
+//invokeTCB_Suspend(tcb_t *thread)
+//{
+//    suspend(thread);
+//    return EXCEPTION_NONE;
+//}
 
-exception_t
-invokeTCB_Resume(tcb_t *thread)
-{
-    restart(thread);
-    return EXCEPTION_NONE;
-}
+//exception_t
+//invokeTCB_Resume(tcb_t *thread)
+//{
+//    restart(thread);
+//    return EXCEPTION_NONE;
+//}
 
-exception_t
-invokeTCB_ThreadControl(tcb_t *target, cte_t* slot,
-                        cptr_t faultep, prio_t mcp, prio_t priority,
-                        cap_t cRoot_newCap, cte_t *cRoot_srcSlot,
-                        cap_t vRoot_newCap, cte_t *vRoot_srcSlot,
-                        word_t bufferAddr, cap_t bufferCap,
-                        cte_t *bufferSrcSlot,
-                        thread_control_flag_t updateFlags)
-{
-    exception_t e;
-    cap_t tCap = cap_thread_cap_new((word_t)target);
+//exception_t
+//invokeTCB_ThreadControl(tcb_t *target, cte_t* slot,
+//                        cptr_t faultep, prio_t mcp, prio_t priority,
+//                        cap_t cRoot_newCap, cte_t *cRoot_srcSlot,
+//                        cap_t vRoot_newCap, cte_t *vRoot_srcSlot,
+//                        word_t bufferAddr, cap_t bufferCap,
+//                        cte_t *bufferSrcSlot,
+//                        thread_control_flag_t updateFlags)
+//{
+//    exception_t e;
+//    cap_t tCap = cap_thread_cap_new((word_t)target);
+//
+//    if (updateFlags & thread_control_update_space) {
+//        target->tcbFaultHandler = faultep;
+//    }
+//
+//    if (updateFlags & thread_control_update_mcp) {
+//        setMCPriority(target, mcp);
+//    }
+//
+//    if (updateFlags & thread_control_update_priority) {
+//        setPriority(target, priority);
+//    }
+//
+//    if (updateFlags & thread_control_update_space) {
+//        cte_t *rootSlot;
+//
+//        rootSlot = TCB_PTR_CTE_PTR(target, tcbCTable);
+//        e = cteDelete(rootSlot, true);
+//        if (e != EXCEPTION_NONE) {
+//            return e;
+//        }
+//        if (sameObjectAs(cRoot_newCap, cRoot_srcSlot->cap) &&
+//                sameObjectAs(tCap, slot->cap)) {
+//            cteInsert(cRoot_newCap, cRoot_srcSlot, rootSlot);
+//        }
+//    }
+//
+//    if (updateFlags & thread_control_update_space) {
+//        cte_t *rootSlot;
+//
+//        rootSlot = TCB_PTR_CTE_PTR(target, tcbVTable);
+//        e = cteDelete(rootSlot, true);
+//        if (e != EXCEPTION_NONE) {
+//            return e;
+//        }
+//        if (sameObjectAs(vRoot_newCap, vRoot_srcSlot->cap) &&
+//                sameObjectAs(tCap, slot->cap)) {
+//            cteInsert(vRoot_newCap, vRoot_srcSlot, rootSlot);
+//        }
+//    }
+//
+//    if (updateFlags & thread_control_update_ipc_buffer) {
+//        cte_t *bufferSlot;
+//
+//        bufferSlot = TCB_PTR_CTE_PTR(target, tcbBuffer);
+//        e = cteDelete(bufferSlot, true);
+//        if (e != EXCEPTION_NONE) {
+//            return e;
+//        }
+//        target->tcbIPCBuffer = bufferAddr;
+//
+//        Arch_setTCBIPCBuffer(target, bufferAddr);
+//
+//        if (bufferSrcSlot && sameObjectAs(bufferCap, bufferSrcSlot->cap) &&
+//                sameObjectAs(tCap, slot->cap)) {
+//            cteInsert(bufferCap, bufferSrcSlot, bufferSlot);
+//        }
+//
+//        if (target == NODE_STATE(ksCurThread)) {
+//            rescheduleRequired();
+//        }
+//    }
+//
+//    return EXCEPTION_NONE;
+//}
 
-    if (updateFlags & thread_control_update_space) {
-        target->tcbFaultHandler = faultep;
-    }
-
-    if (updateFlags & thread_control_update_mcp) {
-        setMCPriority(target, mcp);
-    }
-
-    if (updateFlags & thread_control_update_priority) {
-        setPriority(target, priority);
-    }
-
-    if (updateFlags & thread_control_update_space) {
-        cte_t *rootSlot;
-
-        rootSlot = TCB_PTR_CTE_PTR(target, tcbCTable);
-        e = cteDelete(rootSlot, true);
-        if (e != EXCEPTION_NONE) {
-            return e;
-        }
-        if (sameObjectAs(cRoot_newCap, cRoot_srcSlot->cap) &&
-                sameObjectAs(tCap, slot->cap)) {
-            cteInsert(cRoot_newCap, cRoot_srcSlot, rootSlot);
-        }
-    }
-
-    if (updateFlags & thread_control_update_space) {
-        cte_t *rootSlot;
-
-        rootSlot = TCB_PTR_CTE_PTR(target, tcbVTable);
-        e = cteDelete(rootSlot, true);
-        if (e != EXCEPTION_NONE) {
-            return e;
-        }
-        if (sameObjectAs(vRoot_newCap, vRoot_srcSlot->cap) &&
-                sameObjectAs(tCap, slot->cap)) {
-            cteInsert(vRoot_newCap, vRoot_srcSlot, rootSlot);
-        }
-    }
-
-    if (updateFlags & thread_control_update_ipc_buffer) {
-        cte_t *bufferSlot;
-
-        bufferSlot = TCB_PTR_CTE_PTR(target, tcbBuffer);
-        e = cteDelete(bufferSlot, true);
-        if (e != EXCEPTION_NONE) {
-            return e;
-        }
-        target->tcbIPCBuffer = bufferAddr;
-
-        Arch_setTCBIPCBuffer(target, bufferAddr);
-
-        if (bufferSrcSlot && sameObjectAs(bufferCap, bufferSrcSlot->cap) &&
-                sameObjectAs(tCap, slot->cap)) {
-            cteInsert(bufferCap, bufferSrcSlot, bufferSlot);
-        }
-
-        if (target == NODE_STATE(ksCurThread)) {
-            rescheduleRequired();
-        }
-    }
-
-    return EXCEPTION_NONE;
-}
-
-exception_t
-invokeTCB_CopyRegisters(tcb_t *dest, tcb_t *tcb_src,
-                        bool_t suspendSource, bool_t resumeTarget,
-                        bool_t transferFrame, bool_t transferInteger,
-                        word_t transferArch)
-{
-    if (suspendSource) {
-        suspend(tcb_src);
-    }
-
-    if (resumeTarget) {
-        restart(dest);
-    }
-
-    if (transferFrame) {
-        word_t i;
-        word_t v;
-        word_t pc;
-
-        for (i = 0; i < n_frameRegisters; i++) {
-            v = getRegister(tcb_src, frameRegisters[i]);
-            setRegister(dest, frameRegisters[i], v);
-        }
-
-        pc = getRestartPC(dest);
-        setNextPC(dest, pc);
-    }
-
-    if (transferInteger) {
-        word_t i;
-        word_t v;
-
-        for (i = 0; i < n_gpRegisters; i++) {
-            v = getRegister(tcb_src, gpRegisters[i]);
-            setRegister(dest, gpRegisters[i], v);
-        }
-    }
-
-    Arch_postModifyRegisters(dest);
-
-    if (dest == NODE_STATE(ksCurThread)) {
-        /* If we modified the current thread we may need to reschedule
-         * due to changing registers are only reloaded in Arch_switchToThread */
-        rescheduleRequired();
-    }
-
-    return Arch_performTransfer(transferArch, tcb_src, dest);
-}
+//exception_t
+//invokeTCB_CopyRegisters(tcb_t *dest, tcb_t *tcb_src,
+//                        bool_t suspendSource, bool_t resumeTarget,
+//                        bool_t transferFrame, bool_t transferInteger,
+//                        word_t transferArch)
+//{
+//    if (suspendSource) {
+//        suspend(tcb_src);
+//    }
+//
+//    if (resumeTarget) {
+//        restart(dest);
+//    }
+//
+//    if (transferFrame) {
+//        word_t i;
+//        word_t v;
+//        word_t pc;
+//
+//        for (i = 0; i < n_frameRegisters; i++) {
+//            v = getRegister(tcb_src, frameRegisters[i]);
+//            setRegister(dest, frameRegisters[i], v);
+//        }
+//
+//        pc = getRestartPC(dest);
+//        setNextPC(dest, pc);
+//    }
+//
+//    if (transferInteger) {
+//        word_t i;
+//        word_t v;
+//
+//        for (i = 0; i < n_gpRegisters; i++) {
+//            v = getRegister(tcb_src, gpRegisters[i]);
+//            setRegister(dest, gpRegisters[i], v);
+//        }
+//    }
+//
+//    Arch_postModifyRegisters(dest);
+//
+//    if (dest == NODE_STATE(ksCurThread)) {
+//        /* If we modified the current thread we may need to reschedule
+//         * due to changing registers are only reloaded in Arch_switchToThread */
+//        rescheduleRequired();
+//    }
+//
+//    return Arch_performTransfer(transferArch, tcb_src, dest);
+//}
 
 /* ReadRegisters is a special case: replyFromKernel & setMRs are
  * unfolded here, in order to avoid passing the large reply message up
@@ -1569,130 +1569,130 @@ invokeTCB_CopyRegisters(tcb_t *dest, tcb_t *tcb_src,
  * top-level replyFromKernel_success_empty() from running by setting the
  * thread state. Retype does this too.
  */
-exception_t
-invokeTCB_ReadRegisters(tcb_t *tcb_src, bool_t suspendSource,
-                        word_t n, word_t arch, bool_t call)
-{
-    word_t i, j;
-    exception_t e;
-    tcb_t *thread;
+//exception_t
+//invokeTCB_ReadRegisters(tcb_t *tcb_src, bool_t suspendSource,
+//                        word_t n, word_t arch, bool_t call)
+//{
+//    word_t i, j;
+//    exception_t e;
+//    tcb_t *thread;
+//
+//    thread = NODE_STATE(ksCurThread);
+//
+//    if (suspendSource) {
+//        suspend(tcb_src);
+//    }
+//
+//    e = Arch_performTransfer(arch, tcb_src, NODE_STATE(ksCurThread));
+//    if (e != EXCEPTION_NONE) {
+//        return e;
+//    }
+//
+//    if (call) {
+//        word_t *ipcBuffer;
+//
+//        ipcBuffer = lookupIPCBuffer(true, thread);
+//
+//        setRegister(thread, badgeRegister, 0);
+//
+//        for (i = 0; i < n && i < n_frameRegisters && i < n_msgRegisters; i++) {
+//            setRegister(thread, msgRegisters[i],
+//                        getRegister(tcb_src, frameRegisters[i]));
+//        }
+//
+//        if (ipcBuffer != NULL && i < n && i < n_frameRegisters) {
+//            for (; i < n && i < n_frameRegisters; i++) {
+//                ipcBuffer[i + 1] = getRegister(tcb_src, frameRegisters[i]);
+//            }
+//        }
+//
+//        j = i;
+//
+//        for (i = 0; i < n_gpRegisters && i + n_frameRegisters < n
+//                && i + n_frameRegisters < n_msgRegisters; i++) {
+//            setRegister(thread, msgRegisters[i + n_frameRegisters],
+//                        getRegister(tcb_src, gpRegisters[i]));
+//        }
+//
+//        if (ipcBuffer != NULL && i < n_gpRegisters
+//                && i + n_frameRegisters < n) {
+//            for (; i < n_gpRegisters && i + n_frameRegisters < n; i++) {
+//                ipcBuffer[i + n_frameRegisters + 1] =
+//                    getRegister(tcb_src, gpRegisters[i]);
+//            }
+//        }
+//
+//        setRegister(thread, msgInfoRegister, wordFromMessageInfo(
+//                        seL4_MessageInfo_new(0, 0, 0, i + j)));
+//    }
+//    setThreadState(thread, ThreadState_Running);
+//
+//    return EXCEPTION_NONE;
+//}
 
-    thread = NODE_STATE(ksCurThread);
+//exception_t
+//invokeTCB_WriteRegisters(tcb_t *dest, bool_t resumeTarget,
+//                         word_t n, word_t arch, word_t *buffer)
+//{
+//    word_t i;
+//    word_t pc;
+//    exception_t e;
+//    bool_t archInfo;
+//
+//    e = Arch_performTransfer(arch, NODE_STATE(ksCurThread), dest);
+//    if (e != EXCEPTION_NONE) {
+//        return e;
+//    }
+//
+//    if (n > n_frameRegisters + n_gpRegisters) {
+//        n = n_frameRegisters + n_gpRegisters;
+//    }
+//
+//    archInfo = Arch_getSanitiseRegisterInfo(dest);
+//
+//    for (i = 0; i < n_frameRegisters && i < n; i++) {
+//        /* Offset of 2 to get past the initial syscall arguments */
+//        setRegister(dest, frameRegisters[i],
+//                    sanitiseRegister(frameRegisters[i],
+//                                     getSyscallArg(i + 2, buffer), archInfo));
+//    }
+//
+//    for (i = 0; i < n_gpRegisters && i + n_frameRegisters < n; i++) {
+//        setRegister(dest, gpRegisters[i],
+//                    sanitiseRegister(gpRegisters[i],
+//                                     getSyscallArg(i + n_frameRegisters + 2,
+//                                                   buffer), archInfo));
+//    }
+//
+//    pc = getRestartPC(dest);
+//    setNextPC(dest, pc);
+//
+//    Arch_postModifyRegisters(dest);
+//
+//    if (resumeTarget) {
+//        restart(dest);
+//    }
+//
+//    if (dest == NODE_STATE(ksCurThread)) {
+//        /* If we modified the current thread we may need to reschedule
+//         * due to changing registers are only reloaded in Arch_switchToThread */
+//        rescheduleRequired();
+//    }
+//
+//    return EXCEPTION_NONE;
+//}
 
-    if (suspendSource) {
-        suspend(tcb_src);
-    }
-
-    e = Arch_performTransfer(arch, tcb_src, NODE_STATE(ksCurThread));
-    if (e != EXCEPTION_NONE) {
-        return e;
-    }
-
-    if (call) {
-        word_t *ipcBuffer;
-
-        ipcBuffer = lookupIPCBuffer(true, thread);
-
-        setRegister(thread, badgeRegister, 0);
-
-        for (i = 0; i < n && i < n_frameRegisters && i < n_msgRegisters; i++) {
-            setRegister(thread, msgRegisters[i],
-                        getRegister(tcb_src, frameRegisters[i]));
-        }
-
-        if (ipcBuffer != NULL && i < n && i < n_frameRegisters) {
-            for (; i < n && i < n_frameRegisters; i++) {
-                ipcBuffer[i + 1] = getRegister(tcb_src, frameRegisters[i]);
-            }
-        }
-
-        j = i;
-
-        for (i = 0; i < n_gpRegisters && i + n_frameRegisters < n
-                && i + n_frameRegisters < n_msgRegisters; i++) {
-            setRegister(thread, msgRegisters[i + n_frameRegisters],
-                        getRegister(tcb_src, gpRegisters[i]));
-        }
-
-        if (ipcBuffer != NULL && i < n_gpRegisters
-                && i + n_frameRegisters < n) {
-            for (; i < n_gpRegisters && i + n_frameRegisters < n; i++) {
-                ipcBuffer[i + n_frameRegisters + 1] =
-                    getRegister(tcb_src, gpRegisters[i]);
-            }
-        }
-
-        setRegister(thread, msgInfoRegister, wordFromMessageInfo(
-                        seL4_MessageInfo_new(0, 0, 0, i + j)));
-    }
-    setThreadState(thread, ThreadState_Running);
-
-    return EXCEPTION_NONE;
-}
-
-exception_t
-invokeTCB_WriteRegisters(tcb_t *dest, bool_t resumeTarget,
-                         word_t n, word_t arch, word_t *buffer)
-{
-    word_t i;
-    word_t pc;
-    exception_t e;
-    bool_t archInfo;
-
-    e = Arch_performTransfer(arch, NODE_STATE(ksCurThread), dest);
-    if (e != EXCEPTION_NONE) {
-        return e;
-    }
-
-    if (n > n_frameRegisters + n_gpRegisters) {
-        n = n_frameRegisters + n_gpRegisters;
-    }
-
-    archInfo = Arch_getSanitiseRegisterInfo(dest);
-
-    for (i = 0; i < n_frameRegisters && i < n; i++) {
-        /* Offset of 2 to get past the initial syscall arguments */
-        setRegister(dest, frameRegisters[i],
-                    sanitiseRegister(frameRegisters[i],
-                                     getSyscallArg(i + 2, buffer), archInfo));
-    }
-
-    for (i = 0; i < n_gpRegisters && i + n_frameRegisters < n; i++) {
-        setRegister(dest, gpRegisters[i],
-                    sanitiseRegister(gpRegisters[i],
-                                     getSyscallArg(i + n_frameRegisters + 2,
-                                                   buffer), archInfo));
-    }
-
-    pc = getRestartPC(dest);
-    setNextPC(dest, pc);
-
-    Arch_postModifyRegisters(dest);
-
-    if (resumeTarget) {
-        restart(dest);
-    }
-
-    if (dest == NODE_STATE(ksCurThread)) {
-        /* If we modified the current thread we may need to reschedule
-         * due to changing registers are only reloaded in Arch_switchToThread */
-        rescheduleRequired();
-    }
-
-    return EXCEPTION_NONE;
-}
-
-exception_t
-invokeTCB_NotificationControl(tcb_t *tcb, notification_t *ntfnPtr)
-{
-    if (ntfnPtr) {
-        bindNotification(tcb, ntfnPtr);
-    } else {
-        unbindNotification(tcb);
-    }
-
-    return EXCEPTION_NONE;
-}
+//exception_t
+//invokeTCB_NotificationControl(tcb_t *tcb, notification_t *ntfnPtr)
+//{
+//    if (ntfnPtr) {
+//        bindNotification(tcb, ntfnPtr);
+//    } else {
+//        unbindNotification(tcb);
+//    }
+//
+//    return EXCEPTION_NONE;
+//}
 
 #ifdef CONFIG_DEBUG_BUILD
 void
@@ -1702,44 +1702,44 @@ setThreadName(tcb_t *tcb, const char *name)
 }
 #endif
 
-word_t
-setMRs_syscall_error(tcb_t *thread, word_t *receiveIPCBuffer)
-{
-    switch (current_syscall_error.type) {
-    case seL4_InvalidArgument:
-        return setMR(thread, receiveIPCBuffer, 0,
-                     current_syscall_error.invalidArgumentNumber);
-
-    case seL4_InvalidCapability:
-        return setMR(thread, receiveIPCBuffer, 0,
-                     current_syscall_error.invalidCapNumber);
-
-    case seL4_IllegalOperation:
-        return 0;
-
-    case seL4_RangeError:
-        setMR(thread, receiveIPCBuffer, 0,
-              current_syscall_error.rangeErrorMin);
-        return setMR(thread, receiveIPCBuffer, 1,
-                     current_syscall_error.rangeErrorMax);
-
-    case seL4_AlignmentError:
-        return 0;
-
-    case seL4_FailedLookup:
-        setMR(thread, receiveIPCBuffer, 0,
-              current_syscall_error.failedLookupWasSource ? 1 : 0);
-        return setMRs_lookup_failure(thread, receiveIPCBuffer,
-                                     current_lookup_fault, 1);
-
-    case seL4_TruncatedMessage:
-    case seL4_DeleteFirst:
-    case seL4_RevokeFirst:
-        return 0;
-    case seL4_NotEnoughMemory:
-        return setMR(thread, receiveIPCBuffer, 0,
-                     current_syscall_error.memoryLeft);
-    default:
-        fail("Invalid syscall error");
-    }
-}
+//word_t
+//setMRs_syscall_error(tcb_t *thread, word_t *receiveIPCBuffer)
+//{
+//    switch (current_syscall_error.type) {
+//    case seL4_InvalidArgument:
+//        return setMR(thread, receiveIPCBuffer, 0,
+//                     current_syscall_error.invalidArgumentNumber);
+//
+//    case seL4_InvalidCapability:
+//        return setMR(thread, receiveIPCBuffer, 0,
+//                     current_syscall_error.invalidCapNumber);
+//
+//    case seL4_IllegalOperation:
+//        return 0;
+//
+//    case seL4_RangeError:
+//        setMR(thread, receiveIPCBuffer, 0,
+//              current_syscall_error.rangeErrorMin);
+//        return setMR(thread, receiveIPCBuffer, 1,
+//                     current_syscall_error.rangeErrorMax);
+//
+//    case seL4_AlignmentError:
+//        return 0;
+//
+//    case seL4_FailedLookup:
+//        setMR(thread, receiveIPCBuffer, 0,
+//              current_syscall_error.failedLookupWasSource ? 1 : 0);
+//        return setMRs_lookup_failure(thread, receiveIPCBuffer,
+//                                     current_lookup_fault, 1);
+//
+//    case seL4_TruncatedMessage:
+//    case seL4_DeleteFirst:
+//    case seL4_RevokeFirst:
+//        return 0;
+//    case seL4_NotEnoughMemory:
+//        return setMR(thread, receiveIPCBuffer, 0,
+//                     current_syscall_error.memoryLeft);
+//    default:
+//        fail("Invalid syscall error");
+//    }
+//}

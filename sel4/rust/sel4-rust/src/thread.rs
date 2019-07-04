@@ -16,8 +16,6 @@ use crate::registerset::*;
 
 extern "C"{
     static mut current_extra_caps:extra_caps_t;
-    fn transferCaps(info:seL4_MessageInfo_t,caps:extra_caps_t,endpoint:*mut endpoint_t,
-    receiver:*mut tcb_t,receiveBuffer:*mut word_t)->seL4_MessageInfo_t;
     //src/model/statedata.c
     static mut ksReadyQueues:[tcb_queue_t;256];
     static mut ksReadyQueuesL1Bitmap:[word_t;1];
@@ -38,8 +36,6 @@ extern "C"{
     fn Arch_switchToIdleThread();
     //src/object/endpoint.c
     fn cancelIPC(tptr:*mut tcb_t);
-    //src/kernel/tcb.c
-    fn copyMRs(sender:*mut tcb_t,sendBuf:*mut word_t,receiver:*mut tcb_t,recvBuf:*mut word_t,n:word_t)->word_t;
     //src/arch/x86/machine/hardware.c
     fn getRestartPC(thread:*mut tcb_t)->word_t;
     fn setNextPC(thread:*mut tcb_t,v:word_t);
@@ -51,6 +47,11 @@ extern "C"{
     //src/util.c
     fn rust_clzl(x:u64)->i64; 
     fn kprintf(format: *const u8, ...);
+}
+
+#[inline]
+pub unsafe fn Arch_getSanitiseRegisterInfo(thread: *mut tcb_t) -> bool_t {
+    0u64
 }
 
 //include/kernel/thread.h
@@ -239,47 +240,47 @@ pub unsafe extern "C" fn doFaultTransfer(badge:word_t,sender:*mut tcb_t,receiver
 //pub type deriveCap_ret_t=deriveCap_ret;
 
 
-//const cap_endpoint_cap:u64=4;
-//unsafe fn transferCaps(mut info:seL4_MessageInfo_t,caps:extra_caps_t,endpoint:*mut endpoint_t,
-//    receiver:*mut tcb_t,receiveBuffer:*mut word_t)->seL4_MessageInfo_t{
-//    info = seL4_MessageInfo_set_extraCaps(info, 0);
-//    info = seL4_MessageInfo_set_capsUnwrapped(info, 0);
-//    if (caps.excaprefs[0] == 0 as cte_ptr_t) || (receiveBuffer == 0 as *mut word_t) {
-//        return info;
-//    }
-//    let mut destSlot:*mut cte_t=getReceiveSlots(receiver, receiveBuffer);
-//    let mut i:usize=0;
-//    while i < seL4_MsgMaxExtraCaps && caps.excaprefs[i] != 0 as cte_ptr_t {
-//        let slot:*mut cte_t=caps.excaprefs[i];
-//        let cap:cap_t=(*slot).cap;
-//        
-//        if cap_get_capType(cap) == cap_endpoint_cap && cap_endpoint_cap_get_capEPPtr(cap) == endpoint as u64 {
-//            setExtraBadge(receiveBuffer,cap_endpoint_cap_get_capEPBadge(cap),i as u64);
-//            info = seL4_MessageInfo_set_capsUnwrapped(info,
-//                seL4_MessageInfo_get_capsUnwrapped(info) | (1 << i));
-//
-//        }else{
-//            if destSlot==0 as cte_ptr_t {
-//                break;
-//            }
-//            
-//            let dc_ret:deriveCap_ret_t=deriveCap(slot, cap);
-//            if dc_ret.status!=EXCEPTION_NONE {
-//                break;
-//            }
-//            if cap_get_capType(dc_ret.cap)==cap_tag_t::cap_null_cap as u64 {
-//                break;
-//            }
-//            
-//            cteInsert(dc_ret.cap,slot,destSlot);
-//            destSlot=0 as cte_ptr_t;
-//        }
-//        
-//        i+=1;
-//    }
-//    
-//    seL4_MessageInfo_set_extraCaps(info,i as u64)
-//}
+const cap_endpoint_cap:u64=4;
+unsafe fn transferCaps(mut info:seL4_MessageInfo_t,caps:extra_caps_t,endpoint:*mut endpoint_t,
+    receiver:*mut tcb_t,receiveBuffer:*mut word_t)->seL4_MessageInfo_t{
+    info = seL4_MessageInfo_set_extraCaps(info, 0);
+    info = seL4_MessageInfo_set_capsUnwrapped(info, 0);
+    if (caps.excaprefs[0] == 0 as cte_ptr_t) || (receiveBuffer == 0 as *mut word_t) {
+        return info;
+    }
+    let mut destSlot:*mut cte_t=getReceiveSlots(receiver, receiveBuffer);
+    let mut i:usize=0;
+    while i < seL4_MsgMaxExtraCaps && caps.excaprefs[i] != 0 as cte_ptr_t {
+        let slot:*mut cte_t=caps.excaprefs[i];
+        let cap:cap_t=(*slot).cap;
+        
+        if cap_get_capType(cap) == cap_endpoint_cap && cap_endpoint_cap_get_capEPPtr(cap) == endpoint as u64 {
+            setExtraBadge(receiveBuffer,cap_endpoint_cap_get_capEPBadge(cap),i as u64);
+            info = seL4_MessageInfo_set_capsUnwrapped(info,
+                seL4_MessageInfo_get_capsUnwrapped(info) | (1 << i));
+
+        }else{
+            if destSlot==0 as cte_ptr_t {
+                break;
+            }
+            
+            let dc_ret:deriveCap_ret_t=deriveCap(slot, cap);
+            if dc_ret.status!=EXCEPTION_NONE {
+                break;
+            }
+            if cap_get_capType(dc_ret.cap)==cap_tag_t::cap_null_cap as u64 {
+                break;
+            }
+            
+            cteInsert(dc_ret.cap,slot,destSlot);
+            destSlot=0 as cte_ptr_t;
+        }
+        
+        i+=1;
+    }
+    
+    seL4_MessageInfo_set_extraCaps(info,i as u64)
+}
 
 
 #[no_mangle]
