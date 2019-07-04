@@ -9,18 +9,19 @@ use crate::types::*;
 use crate::structures::{tcb_t,dschedule,tcb_queue_t,_thread_state,_thread_state_t,cte_t,cap_t,cap_tag_t};
 use crate::object::arch_structures::*;
 use crate::object::cap::*;
+use crate::object::tcb::*;
+use crate::object::cnode::*;
+use crate::object::objecttype::*;
 use crate::registerset::*;
 
 extern "C"{
     static mut current_extra_caps:extra_caps_t;
-    //fn possibleSwitchTo(target:*mut tcb_t);
     fn transferCaps(info:seL4_MessageInfo_t,caps:extra_caps_t,endpoint:*mut endpoint_t,
     receiver:*mut tcb_t,receiveBuffer:*mut word_t)->seL4_MessageInfo_t;
-    fn getHighestPrio(dom:word_t)->prio_t;
     //src/model/statedata.c
     static mut ksReadyQueues:[tcb_queue_t;256];
     static mut ksReadyQueuesL1Bitmap:[word_t;1];
-    static mut ksReadyQueuesL2Bitmap:[[word_t;1];L2_BITMAP_SIZE];
+    static mut ksReadyQueuesL2Bitmap:[[word_t;L2_BITMAP_SIZE];1];
     static mut ksCurThread:*mut tcb_t;
     static mut ksIdleThread:*mut tcb_t;
     static mut ksSchedulerAction:*mut tcb_t;
@@ -35,20 +36,10 @@ extern "C"{
     fn Arch_activateIdleThread(tcb:*mut tcb_t); //这个函数其实是空的
     fn Arch_switchToThread(tcb:*mut tcb_t);
     fn Arch_switchToIdleThread();
-    //src/object/cnode.c
-    fn setupReplyMaster(thread:*mut tcb_t);
-    fn cteDeleteOne(slot:*mut cte_t);
-    fn getReceiveSlots(thread:*mut tcb_t,buffer:*mut word_t)->*mut cte_t;
-    fn cteInsert(newCap:cap_t,srcSlot:*mut cte_t,destSlot:*mut cte_t);
     //src/object/endpoint.c
     fn cancelIPC(tptr:*mut tcb_t);
     //src/kernel/tcb.c
-    fn tcbSchedDequeue(tcb:*mut tcb_t);
-    fn tcbSchedEnqueue(tcb:*mut tcb_t);
-    fn tcbSchedAppend(tcb:*mut tcb_t);
-    fn lookupExtraCaps(thread:*mut tcb_t,bufferPtr:*mut word_t,info:seL4_MessageInfo_t)->exception_t;
     fn copyMRs(sender:*mut tcb_t,sendBuf:*mut word_t,receiver:*mut tcb_t,recvBuf:*mut word_t,n:word_t)->word_t;
-    fn setExtraBadge(bufferPtr:*mut word_t,badge:word_t,i:word_t);
     //src/arch/x86/machine/hardware.c
     fn getRestartPC(thread:*mut tcb_t)->word_t;
     fn setNextPC(thread:*mut tcb_t,v:word_t);
@@ -57,23 +48,27 @@ extern "C"{
     //src/api/faults.c
     fn handleFaultReply(receiver:*mut tcb_t,sender:*mut tcb_t)->bool_t;
     fn setMRs_fault(sender:*mut tcb_t,receiver:*mut tcb_t,receiveIPCBuffer:*mut word_t)->word_t;
-    //src/object/objecttype.c
-    fn deriveCap(slot:*mut cte_t,cap:cap_t)->deriveCap_ret_t;
     //src/util.c
-    fn rust_clzl(x:u64)->i64;
+    fn rust_clzl(x:u64)->i64; 
+    fn kprintf(format: *const u8, ...);
 }
 
 //include/kernel/thread.h
 
 #[allow(unused_variables)]
 #[inline]
-fn read_queues_index(dom:word_t,prio:word_t)->word_t{
+pub fn ready_queues_index(dom:word_t,prio:word_t)->word_t{
     prio
 }
 
 #[inline]
-fn l1index_to_prio(l1index:word_t)->word_t{
+pub fn l1index_to_prio(l1index:word_t)->word_t{
     l1index<<6
+}
+
+#[inline]
+pub fn prio_to_l1index(prio: u64) -> u64 {
+    prio >> 6
 }
 
 #[inline]
@@ -89,13 +84,13 @@ fn isRunnable(thread:*const tcb_t)->bool_t{
     }
 }
 
-const L2_BITMAP_SIZE:usize=(256+(1<<6)-1)/(1<<6);
+pub const L2_BITMAP_SIZE:usize=(256+(1<<6)-1)/(1<<6);
 #[inline]
-fn invert_l1index(l1index:word_t)->word_t{
+pub fn invert_l1index(l1index:word_t)->word_t{
     L2_BITMAP_SIZE as u64 - 1 - l1index
 }
 
-/*
+
 #[inline]
 unsafe fn getHighestPrio(dom:word_t)->prio_t{
     let l1index:word_t = (wordBits as i64 - 1 - rust_clzl(node_state!(ksReadyQueuesL1Bitmap)[dom as usize]) )as u64;
@@ -103,7 +98,6 @@ unsafe fn getHighestPrio(dom:word_t)->prio_t{
     let l2index:word_t = (wordBits as i64 - 1 - rust_clzl(node_state!(ksReadyQueuesL2Bitmap)[dom as usize][l1index_inverted as usize]) )as u64;
     l1index_to_prio(l1index) | l2index
 }
-*/
 
 #[inline]
 unsafe fn isHighestPrio(dom:word_t,prio:prio_t)->bool_t{
@@ -244,49 +238,49 @@ pub unsafe extern "C" fn doFaultTransfer(badge:word_t,sender:*mut tcb_t,receiver
 //}
 //pub type deriveCap_ret_t=deriveCap_ret;
 
-/*
-const cap_endpoint_cap:u64=4;
-unsafe fn transferCaps(mut info:seL4_MessageInfo_t,caps:extra_caps_t,endpoint:*mut endpoint_t,
-    receiver:*mut tcb_t,receiveBuffer:*mut word_t)->seL4_MessageInfo_t{
-    info = seL4_MessageInfo_set_extraCaps(info, 0);
-    info = seL4_MessageInfo_set_capsUnwrapped(info, 0);
-    if (caps.excaprefs[0] == 0 as cte_ptr_t) || (receiveBuffer == 0 as *mut word_t) {
-        return info;
-    }
-    let mut destSlot:*mut cte_t=getReceiveSlots(receiver, receiveBuffer);
-    let mut i:usize=0;
-    while i < seL4_MsgMaxExtraCaps && caps.excaprefs[i] != 0 as cte_ptr_t {
-        let slot:*mut cte_t=caps.excaprefs[i];
-        let cap:cap_t=(*slot).cap;
-        
-        if cap_get_capType(cap) == cap_endpoint_cap && cap_endpoint_cap_get_capEPPtr(cap) == endpoint as u64 {
-            setExtraBadge(receiveBuffer,cap_endpoint_cap_get_capEPBadge(cap),i as u64);
-            info = seL4_MessageInfo_set_capsUnwrapped(info,
-                seL4_MessageInfo_get_capsUnwrapped(info) | (1 << i));
 
-        }else{
-            if destSlot==0 as cte_ptr_t {
-                break;
-            }
-            
-            let dc_ret:deriveCap_ret_t=deriveCap(slot, cap);
-            if dc_ret.status!=EXCEPTION_NONE {
-                break;
-            }
-            if cap_get_capType(dc_ret.cap)==cap_tag_t::cap_null_cap as u64 {
-                break;
-            }
-            
-            cteInsert(dc_ret.cap,slot,destSlot);
-            destSlot=0 as cte_ptr_t;
-        }
-        
-        i+=1;
-    }
-    
-    seL4_MessageInfo_set_extraCaps(info,i as u64)
-}
-*/
+//const cap_endpoint_cap:u64=4;
+//unsafe fn transferCaps(mut info:seL4_MessageInfo_t,caps:extra_caps_t,endpoint:*mut endpoint_t,
+//    receiver:*mut tcb_t,receiveBuffer:*mut word_t)->seL4_MessageInfo_t{
+//    info = seL4_MessageInfo_set_extraCaps(info, 0);
+//    info = seL4_MessageInfo_set_capsUnwrapped(info, 0);
+//    if (caps.excaprefs[0] == 0 as cte_ptr_t) || (receiveBuffer == 0 as *mut word_t) {
+//        return info;
+//    }
+//    let mut destSlot:*mut cte_t=getReceiveSlots(receiver, receiveBuffer);
+//    let mut i:usize=0;
+//    while i < seL4_MsgMaxExtraCaps && caps.excaprefs[i] != 0 as cte_ptr_t {
+//        let slot:*mut cte_t=caps.excaprefs[i];
+//        let cap:cap_t=(*slot).cap;
+//        
+//        if cap_get_capType(cap) == cap_endpoint_cap && cap_endpoint_cap_get_capEPPtr(cap) == endpoint as u64 {
+//            setExtraBadge(receiveBuffer,cap_endpoint_cap_get_capEPBadge(cap),i as u64);
+//            info = seL4_MessageInfo_set_capsUnwrapped(info,
+//                seL4_MessageInfo_get_capsUnwrapped(info) | (1 << i));
+//
+//        }else{
+//            if destSlot==0 as cte_ptr_t {
+//                break;
+//            }
+//            
+//            let dc_ret:deriveCap_ret_t=deriveCap(slot, cap);
+//            if dc_ret.status!=EXCEPTION_NONE {
+//                break;
+//            }
+//            if cap_get_capType(dc_ret.cap)==cap_tag_t::cap_null_cap as u64 {
+//                break;
+//            }
+//            
+//            cteInsert(dc_ret.cap,slot,destSlot);
+//            destSlot=0 as cte_ptr_t;
+//        }
+//        
+//        i+=1;
+//    }
+//    
+//    seL4_MessageInfo_set_extraCaps(info,i as u64)
+//}
+
 
 #[no_mangle]
 pub unsafe extern "C" fn doNBRecvFailedTransfer(thread:*mut tcb_t){
@@ -353,7 +347,7 @@ pub unsafe extern "C" fn chooseThread(){
     let dom:word_t = 0;
     if node_state!(ksReadyQueuesL1Bitmap)[dom as usize]!=0 {
         let prio:word_t = getHighestPrio(dom);
-        let thread:*mut tcb_t = node_state!(ksReadyQueues)[read_queues_index(dom,prio) as usize].head;
+        let thread:*mut tcb_t = node_state!(ksReadyQueues)[ready_queues_index(dom,prio) as usize].head;
         switchToThread(thread);
     }else{
         switchToIdleThread();

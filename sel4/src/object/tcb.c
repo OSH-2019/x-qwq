@@ -131,102 +131,102 @@ removeFromBitmap(word_t cpu, word_t dom, word_t prio)
 }
 
 /* Add TCB to the head of a scheduler queue */
-void
-tcbSchedEnqueue(tcb_t *tcb)
-{
-    if (!thread_state_get_tcbQueued(tcb->tcbState)) {
-        tcb_queue_t queue;
-        dom_t dom;
-        prio_t prio;
-        word_t idx;
-
-        dom = tcb->tcbDomain;
-        prio = tcb->tcbPriority;
-        idx = ready_queues_index(dom, prio);
-        queue = NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity);
-
-        if (!queue.end) { /* Empty list */
-            queue.end = tcb;
-            addToBitmap(SMP_TERNARY(tcb->tcbAffinity, 0), dom, prio);
-        } else {
-            queue.head->tcbSchedPrev = tcb;
-        }
-        tcb->tcbSchedPrev = NULL;
-        tcb->tcbSchedNext = queue.head;
-        queue.head = tcb;
-
-        NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity) = queue;
-
-        thread_state_ptr_set_tcbQueued(&tcb->tcbState, true);
-    }
-}
+//void
+//tcbSchedEnqueue(tcb_t *tcb)
+//{
+//    if (!thread_state_get_tcbQueued(tcb->tcbState)) {
+//        tcb_queue_t queue;
+//        dom_t dom;
+//        prio_t prio;
+//        word_t idx;
+//
+//        dom = tcb->tcbDomain;
+//        prio = tcb->tcbPriority;
+//        idx = ready_queues_index(dom, prio);
+//        queue = NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity);
+//
+//        if (!queue.end) { /* Empty list */
+//            queue.end = tcb;
+//            addToBitmap(SMP_TERNARY(tcb->tcbAffinity, 0), dom, prio);
+//        } else {
+//            queue.head->tcbSchedPrev = tcb;
+//        }
+//        tcb->tcbSchedPrev = NULL;
+//        tcb->tcbSchedNext = queue.head;
+//        queue.head = tcb;
+//
+//        NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity) = queue;
+//
+//        thread_state_ptr_set_tcbQueued(&tcb->tcbState, true);
+//    }
+//}
 
 /* Add TCB to the end of a scheduler queue */
-void
-tcbSchedAppend(tcb_t *tcb)
-{
-    if (!thread_state_get_tcbQueued(tcb->tcbState)) {
-        tcb_queue_t queue;
-        dom_t dom;
-        prio_t prio;
-        word_t idx;
-
-        dom = tcb->tcbDomain;
-        prio = tcb->tcbPriority;
-        idx = ready_queues_index(dom, prio);
-        queue = NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity);
-
-        if (!queue.head) { /* Empty list */
-            queue.head = tcb;
-            addToBitmap(SMP_TERNARY(tcb->tcbAffinity, 0), dom, prio);
-        } else {
-            queue.end->tcbSchedNext = tcb;
-        }
-        tcb->tcbSchedPrev = queue.end;
-        tcb->tcbSchedNext = NULL;
-        queue.end = tcb;
-
-        NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity) = queue;
-
-        thread_state_ptr_set_tcbQueued(&tcb->tcbState, true);
-    }
-}
+//void
+//tcbSchedAppend(tcb_t *tcb)
+//{
+//    if (!thread_state_get_tcbQueued(tcb->tcbState)) {
+//        tcb_queue_t queue;
+//        dom_t dom;
+//        prio_t prio;
+//        word_t idx;
+//
+//        dom = tcb->tcbDomain;
+//        prio = tcb->tcbPriority;
+//        idx = ready_queues_index(dom, prio);
+//        queue = NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity);
+//
+//        if (!queue.head) { /* Empty list */
+//            queue.head = tcb;
+//            addToBitmap(SMP_TERNARY(tcb->tcbAffinity, 0), dom, prio);
+//        } else {
+//            queue.end->tcbSchedNext = tcb;
+//        }
+//        tcb->tcbSchedPrev = queue.end;
+//        tcb->tcbSchedNext = NULL;
+//        queue.end = tcb;
+//
+//        NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity) = queue;
+//
+//        thread_state_ptr_set_tcbQueued(&tcb->tcbState, true);
+//    }
+//}
 
 /* Remove TCB from a scheduler queue */
-void
-tcbSchedDequeue(tcb_t *tcb)
-{
-    if (thread_state_get_tcbQueued(tcb->tcbState)) {
-        tcb_queue_t queue;
-        dom_t dom;
-        prio_t prio;
-        word_t idx;
-
-        dom = tcb->tcbDomain;
-        prio = tcb->tcbPriority;
-        idx = ready_queues_index(dom, prio);
-        queue = NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity);
-
-        if (tcb->tcbSchedPrev) {
-            tcb->tcbSchedPrev->tcbSchedNext = tcb->tcbSchedNext;
-        } else {
-            queue.head = tcb->tcbSchedNext;
-            if (likely(!tcb->tcbSchedNext)) {
-                removeFromBitmap(SMP_TERNARY(tcb->tcbAffinity, 0), dom, prio);
-            }
-        }
-
-        if (tcb->tcbSchedNext) {
-            tcb->tcbSchedNext->tcbSchedPrev = tcb->tcbSchedPrev;
-        } else {
-            queue.end = tcb->tcbSchedPrev;
-        }
-
-        NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity) = queue;
-
-        thread_state_ptr_set_tcbQueued(&tcb->tcbState, false);
-    }
-}
+//void
+//tcbSchedDequeue(tcb_t *tcb)
+//{
+//    if (thread_state_get_tcbQueued(tcb->tcbState)) {
+//        tcb_queue_t queue;
+//        dom_t dom;
+//        prio_t prio;
+//        word_t idx;
+//
+//        dom = tcb->tcbDomain;
+//        prio = tcb->tcbPriority;
+//        idx = ready_queues_index(dom, prio);
+//        queue = NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity);
+//
+//        if (tcb->tcbSchedPrev) {
+//            tcb->tcbSchedPrev->tcbSchedNext = tcb->tcbSchedNext;
+//        } else {
+//            queue.head = tcb->tcbSchedNext;
+//            if (likely(!tcb->tcbSchedNext)) {
+//                removeFromBitmap(SMP_TERNARY(tcb->tcbAffinity, 0), dom, prio);
+//            }
+//        }
+//
+//        if (tcb->tcbSchedNext) {
+//            tcb->tcbSchedNext->tcbSchedPrev = tcb->tcbSchedPrev;
+//        } else {
+//            queue.end = tcb->tcbSchedPrev;
+//        }
+//
+//        NODE_STATE_ON_CORE(ksReadyQueues[idx], tcb->tcbAffinity) = queue;
+//
+//        thread_state_ptr_set_tcbQueued(&tcb->tcbState, false);
+//    }
+//}
 
 #ifdef CONFIG_DEBUG_BUILD
 void tcbDebugAppend(tcb_t *tcb)
@@ -263,117 +263,117 @@ void tcbDebugRemove(tcb_t *tcb)
 #endif /* CONFIG_DEBUG_BUILD */
 
 /* Add TCB to the end of an endpoint queue */
-tcb_queue_t
-tcbEPAppend(tcb_t *tcb, tcb_queue_t queue)
-{
-    if (!queue.head) { /* Empty list */
-        queue.head = tcb;
-    } else {
-        queue.end->tcbEPNext = tcb;
-    }
-    tcb->tcbEPPrev = queue.end;
-    tcb->tcbEPNext = NULL;
-    queue.end = tcb;
-
-    return queue;
-}
+//tcb_queue_t
+//tcbEPAppend(tcb_t *tcb, tcb_queue_t queue)
+//{
+//    if (!queue.head) { /* Empty list */
+//        queue.head = tcb;
+//    } else {
+//        queue.end->tcbEPNext = tcb;
+//    }
+//    tcb->tcbEPPrev = queue.end;
+//    tcb->tcbEPNext = NULL;
+//    queue.end = tcb;
+//
+//    return queue;
+//}
 
 /* Remove TCB from an endpoint queue */
-tcb_queue_t
-tcbEPDequeue(tcb_t *tcb, tcb_queue_t queue)
-{
-    if (tcb->tcbEPPrev) {
-        tcb->tcbEPPrev->tcbEPNext = tcb->tcbEPNext;
-    } else {
-        queue.head = tcb->tcbEPNext;
-    }
+//tcb_queue_t
+//tcbEPDequeue(tcb_t *tcb, tcb_queue_t queue)
+//{
+//    if (tcb->tcbEPPrev) {
+//        tcb->tcbEPPrev->tcbEPNext = tcb->tcbEPNext;
+//    } else {
+//        queue.head = tcb->tcbEPNext;
+//    }
+//
+//    if (tcb->tcbEPNext) {
+//        tcb->tcbEPNext->tcbEPPrev = tcb->tcbEPPrev;
+//    } else {
+//        queue.end = tcb->tcbEPPrev;
+//    }
+//
+//    return queue;
+//}
 
-    if (tcb->tcbEPNext) {
-        tcb->tcbEPNext->tcbEPPrev = tcb->tcbEPPrev;
-    } else {
-        queue.end = tcb->tcbEPPrev;
-    }
+//cptr_t PURE
+//getExtraCPtr(word_t *bufferPtr, word_t i)
+//{
+//    return (cptr_t)bufferPtr[seL4_MsgMaxLength + 2 + i];
+//}
 
-    return queue;
-}
+//void
+//setExtraBadge(word_t *bufferPtr, word_t badge,
+//              word_t i)
+//{
+//    bufferPtr[seL4_MsgMaxLength + 2 + i] = badge;
+//}
 
-cptr_t PURE
-getExtraCPtr(word_t *bufferPtr, word_t i)
-{
-    return (cptr_t)bufferPtr[seL4_MsgMaxLength + 2 + i];
-}
+//void
+//setupCallerCap(tcb_t *sender, tcb_t *receiver)
+//{
+//    cte_t *replySlot, *callerSlot;
+//    cap_t masterCap UNUSED, callerCap UNUSED;
+//
+//    setThreadState(sender, ThreadState_BlockedOnReply);
+//    replySlot = TCB_PTR_CTE_PTR(sender, tcbReply);
+//    masterCap = replySlot->cap;
+//    /* Haskell error: "Sender must have a valid master reply cap" */
+//    assert(cap_get_capType(masterCap) == cap_reply_cap);
+//    assert(cap_reply_cap_get_capReplyMaster(masterCap));
+//    assert(TCB_PTR(cap_reply_cap_get_capTCBPtr(masterCap)) == sender);
+//    callerSlot = TCB_PTR_CTE_PTR(receiver, tcbCaller);
+//    callerCap = callerSlot->cap;
+//    /* Haskell error: "Caller cap must not already exist" */
+//    assert(cap_get_capType(callerCap) == cap_null_cap);
+//    cteInsert(cap_reply_cap_new(false, TCB_REF(sender)),
+//              replySlot, callerSlot);
+//}
 
-void
-setExtraBadge(word_t *bufferPtr, word_t badge,
-              word_t i)
-{
-    bufferPtr[seL4_MsgMaxLength + 2 + i] = badge;
-}
-
-void
-setupCallerCap(tcb_t *sender, tcb_t *receiver)
-{
-    cte_t *replySlot, *callerSlot;
-    cap_t masterCap UNUSED, callerCap UNUSED;
-
-    setThreadState(sender, ThreadState_BlockedOnReply);
-    replySlot = TCB_PTR_CTE_PTR(sender, tcbReply);
-    masterCap = replySlot->cap;
-    /* Haskell error: "Sender must have a valid master reply cap" */
-    assert(cap_get_capType(masterCap) == cap_reply_cap);
-    assert(cap_reply_cap_get_capReplyMaster(masterCap));
-    assert(TCB_PTR(cap_reply_cap_get_capTCBPtr(masterCap)) == sender);
-    callerSlot = TCB_PTR_CTE_PTR(receiver, tcbCaller);
-    callerCap = callerSlot->cap;
-    /* Haskell error: "Caller cap must not already exist" */
-    assert(cap_get_capType(callerCap) == cap_null_cap);
-    cteInsert(cap_reply_cap_new(false, TCB_REF(sender)),
-              replySlot, callerSlot);
-}
-
-void
-deleteCallerCap(tcb_t *receiver)
-{
-    cte_t *callerSlot;
-
-    callerSlot = TCB_PTR_CTE_PTR(receiver, tcbCaller);
-    /** GHOSTUPD: "(True, gs_set_assn cteDeleteOne_'proc (ucast cap_reply_cap))" */
-    cteDeleteOne(callerSlot);
-}
+//void
+//deleteCallerCap(tcb_t *receiver)
+//{
+//    cte_t *callerSlot;
+//
+//    callerSlot = TCB_PTR_CTE_PTR(receiver, tcbCaller);
+//    /** GHOSTUPD: "(True, gs_set_assn cteDeleteOne_'proc (ucast cap_reply_cap))" */
+//    cteDeleteOne(callerSlot);
+//}
 
 extra_caps_t current_extra_caps;
 
-exception_t
-lookupExtraCaps(tcb_t* thread, word_t *bufferPtr, seL4_MessageInfo_t info)
-{
-    lookupSlot_raw_ret_t lu_ret;
-    cptr_t cptr;
-    word_t i, length;
-
-    if (!bufferPtr) {
-        current_extra_caps.excaprefs[0] = NULL;
-        return EXCEPTION_NONE;
-    }
-
-    length = seL4_MessageInfo_get_extraCaps(info);
-
-    for (i = 0; i < length; i++) {
-        cptr = getExtraCPtr(bufferPtr, i);
-
-        lu_ret = lookupSlot(thread, cptr);
-        if (lu_ret.status != EXCEPTION_NONE) {
-            current_fault = seL4_Fault_CapFault_new(cptr, false);
-            return lu_ret.status;
-        }
-
-        current_extra_caps.excaprefs[i] = lu_ret.slot;
-    }
-    if (i < seL4_MsgMaxExtraCaps) {
-        current_extra_caps.excaprefs[i] = NULL;
-    }
-
-    return EXCEPTION_NONE;
-}
+//exception_t
+//lookupExtraCaps(tcb_t* thread, word_t *bufferPtr, seL4_MessageInfo_t info)
+//{
+//    lookupSlot_raw_ret_t lu_ret;
+//    cptr_t cptr;
+//    word_t i, length;
+//
+//    if (!bufferPtr) {
+//        current_extra_caps.excaprefs[0] = NULL;
+//        return EXCEPTION_NONE;
+//    }
+//
+//    length = seL4_MessageInfo_get_extraCaps(info);
+//
+//    for (i = 0; i < length; i++) {
+//        cptr = getExtraCPtr(bufferPtr, i);
+//
+//        lu_ret = lookupSlot(thread, cptr);
+//        if (lu_ret.status != EXCEPTION_NONE) {
+//            current_fault = seL4_Fault_CapFault_new(cptr, false);
+//            return lu_ret.status;
+//        }
+//
+//        current_extra_caps.excaprefs[i] = lu_ret.slot;
+//    }
+//    if (i < seL4_MsgMaxExtraCaps) {
+//        current_extra_caps.excaprefs[i] = NULL;
+//    }
+//
+//    return EXCEPTION_NONE;
+//}
 
 /* Copy IPC MRs from one thread to another */
 word_t

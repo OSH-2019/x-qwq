@@ -80,6 +80,11 @@ pub fn seL4_MessageInfo_set_length(mut seL4_MessageInfo:seL4_MessageInfo_t,v64:u
 }
 
 #[inline]
+pub fn seL4_MessageInfo_get_extraCaps(seL4_MessageInfo: seL4_MessageInfo_t) -> u64 {
+    (seL4_MessageInfo.words[0] & 0x180u64) >> 7
+}
+
+#[inline]
 pub fn seL4_MessageInfo_set_extraCaps(mut seL4_MessageInfo:seL4_MessageInfo_t,v64:u64)->seL4_MessageInfo_t{
     seL4_MessageInfo.words[0] &= !0x180u64;
     seL4_MessageInfo.words[0] |= (v64 << 7) & 0x180u64;

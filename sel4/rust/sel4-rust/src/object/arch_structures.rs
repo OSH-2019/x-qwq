@@ -327,6 +327,17 @@ pub unsafe fn thread_state_ptr_set_blockingObject(thread_state_ptr: *mut thread_
     (*thread_state_ptr).words[0] |= v64 & 0xfffffffffff0u64;
 }
 
+#[inline]
+pub fn thread_state_get_tcbQueued(thread_state: thread_state_t) -> u64 {
+    thread_state.words[1] & 0x1u64
+}
+
+#[inline]
+pub unsafe fn thread_state_ptr_set_tcbQueued(thread_state_ptr: *mut thread_state_t, v64: u64) {
+    (*thread_state_ptr).words[1] &= !0x1u64;
+    (*thread_state_ptr).words[1] |= v64 & 0x1u64;
+}
+
 #[repr(C)]
 pub struct endpoint{
     words:[u64;2]
@@ -339,12 +350,31 @@ pub struct seL4_Fault{
 }
 pub type seL4_Fault_t=seL4_Fault;
 
+pub enum seL4_Fault_tag_t {
+    seL4_Fault_NullFault = 0,
+    seL4_Fault_CapFault = 1,
+    seL4_Fault_UnknownSyscall = 2,
+    seL4_Fault_UserException = 3,
+    seL4_Fault_VMFault = 5,
+}
+
+#[inline]
 pub fn seL4_Fault_get_seL4_FaultType(seL4_Fault:&seL4_Fault_t)->u64{
     seL4_Fault.words[0]&0x7u64
 }
+
+#[inline]
 pub fn seL4_Fault_NullFault_new()->seL4_Fault_t{
     seL4_Fault_t{
         words:[0,0]
+    }
+}
+
+#[inline]
+pub fn seL4_Fault_CapFault_new(address: u64, inReceivePhase: u64) -> seL4_Fault_t {
+    seL4_Fault_t {
+        words: [((inReceivePhase & 0x1u64) << 63) |
+            ((seL4_Fault_tag_t::seL4_Fault_CapFault as u64) & 0x7u64), 0],
     }
 }
 

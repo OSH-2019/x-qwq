@@ -63,18 +63,18 @@ invert_l1index(word_t l1index)
     return inverted;
 }
 
-prio_t getHighestPrio(word_t dom);
-/*
+//prio_t getHighestPrio(word_t dom);
+
 static inline prio_t
 getHighestPrio(word_t dom)
 {
     word_t l1index;
     word_t l2index;
     word_t l1index_inverted;
-*/
+
 
     /* it's undefined to call clzl on 0 */
-/*
+
     assert(NODE_STATE(ksReadyQueuesL1Bitmap)[dom] != 0);
 
     l1index = wordBits - 1 - clzl(NODE_STATE(ksReadyQueuesL1Bitmap)[dom]);
@@ -83,7 +83,7 @@ getHighestPrio(word_t dom)
     l2index = wordBits - 1 - clzl(NODE_STATE(ksReadyQueuesL2Bitmap)[dom][l1index_inverted]);
     return (l1index_to_prio(l1index) | l2index);
 }
-*/
+
 
 static inline bool_t
 isHighestPrio(word_t dom, prio_t prio)

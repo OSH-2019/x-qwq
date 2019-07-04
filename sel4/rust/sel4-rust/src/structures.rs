@@ -171,6 +171,7 @@ fn vmAttributesFromWord(w:word_t)->vm_attributes_t{
 
 //TCB相关
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct thread_state_t{
     pub words:[u64;3]
 }
