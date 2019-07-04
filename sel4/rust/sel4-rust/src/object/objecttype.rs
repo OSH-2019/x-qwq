@@ -39,6 +39,21 @@ pub enum seL4_ObjectType {
     seL4_NonArchObjectTypeCount = 5,
 }
 
+pub enum seL4_seL4ArchObjectType {
+    seL4_X86_PDPObject = 5,
+    seL4_X64_PML4Object = 6,
+    seL4_X64_HugePageobject = 7,
+    seL4_ModeObjectTypeCOunt = 8,
+}
+
+pub enum seL4_ArchObjectType {
+    seL4_X86_4K = 8,
+    seL4_X86_LargePageObject = 9,
+    seL4_X86_PageTableObject = 10,
+    seL4_X86_PageDirectoryObject = 11,
+    seL4_ObjectTypeCount = 12,
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn getObjectSize(t: u64, userObjSize: u64) -> u64 {
     if t >= seL4_ObjectType::seL4_NonArchObjectTypeCount as u64 {
