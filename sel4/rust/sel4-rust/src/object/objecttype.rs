@@ -8,26 +8,40 @@
 use crate::types::*;
 use crate::structures::*;
 use crate::thread::*;
+use crate::failures::*;
+use crate::errors::*;
 use crate::object::cap::*;
 use crate::object::cnode::*;
+use crate::object::untyped::*;
+use crate::object::interrupt::*;
 use crate::object::notification::*;
 use crate::object::arch_structures::*;
 use crate::object::endpoint::sendIPC;
 
 extern "C" {
+    static mut current_syscall_error: syscall_error_t;
     static mut ksCurThread: *mut tcb_t;
     fn deletedIRQHandler(irq: u8);
+    fn createObject(t: u64, regionBase: u64, userSize: u64, deviceMemory: bool_t) -> cap_t;
     fn Arch_postCapDeletion(cap: cap_t);
     fn Arch_getObjectSize(t: u64) -> u64;
     fn Arch_deriveCap(slot: *mut cte_t, cap: cap_t) -> deriveCap_ret_t;
     fn Arch_finaliseCap(cap: cap_t, final_: bool_t) -> finaliseCap_ret_t;
     fn Arch_prepareThreadDelete(thread: *mut tcb_t);
     fn Arch_updateCapData(preserve: bool_t, newData: u64, cap: cap_t) -> cap_t;
+    fn Arch_maskCapRights(cap_rights: seL4_CapRights_t, cap: cap_t) -> cap_t;
+    fn Arch_decodeInvocation(invLabel: u64, length: u64, cpt: u64, slot: *mut cte_t,
+                             cap: cap_t, excaps: extra_caps_t, call: bool_t, buffer: *mut u64) -> u64;
+    fn decodeTCBInvocation(invLabel: u64, length: u64, cap: cap_t,
+                           slot: *mut cte_t, excaps: extra_caps_t, call: bool_t,
+                           buffer: *mut u64) -> u64;
+    fn decodeDomainInvocation(invLabel: u64, length: u64, excaps: extra_caps_t, buffer: *mut u64) -> u64;
     //fn deletedIRQHandler(irq: u8);
     fn Arch_sameRegionAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
     fn Arch_sameObjectAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
     fn tcbDebugRemove(tcb: *mut tcb_t);
     fn cancelAllIPC(epptr: *mut endpoint_t);
+    fn kprintf(format: *const u8, ...);
 }
 
 pub enum seL4_ObjectType {
@@ -323,6 +337,132 @@ pub unsafe extern "C" fn updateCapData(preserve: bool_t, newData: u64, cap: cap_
     }
     cap
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn
+maskCapRights(cap_rights: seL4_CapRights_t, cap: cap_t) -> cap_t {
+    if isArchCap(cap) != 0u64 {
+        return Arch_maskCapRights(cap_rights, cap);
+    }
+    let cap_type = cap_get_capType(cap);
+    if cap_type == cap_tag_t::cap_null_cap as u64 ||
+        cap_type == cap_tag_t::cap_domain_cap as u64 ||
+        cap_type == cap_tag_t::cap_cnode_cap as u64 ||
+        cap_type == cap_tag_t::cap_untyped_cap as u64 ||
+        cap_type == cap_tag_t::cap_reply_cap as u64 ||
+        cap_type == cap_tag_t::cap_irq_control_cap as u64 ||
+        cap_type == cap_tag_t::cap_irq_handler_cap as u64 ||
+        cap_type == cap_tag_t::cap_zombie_cap as u64 ||
+        cap_type == cap_tag_t::cap_thread_cap as u64 {
+        return cap;
+    } else if cap_type == cap_tag_t::cap_endpoint_cap as u64 {
+        let mut new_cap = cap_endpoint_cap_set_capCanSend(
+                      cap, cap_endpoint_cap_get_capCanSend(cap) &
+                      seL4_CapRights_get_capAllowWrite(cap_rights));
+        new_cap = cap_endpoint_cap_set_capCanReceive(
+                      new_cap, cap_endpoint_cap_get_capCanReceive(cap) &
+                      seL4_CapRights_get_capAllowRead(cap_rights));
+        new_cap = cap_endpoint_cap_set_capCanGrant(
+                      new_cap, cap_endpoint_cap_get_capCanGrant(cap) &
+                      seL4_CapRights_get_capAllowGrant(cap_rights));
+        return new_cap;
+    } else if cap_type == cap_tag_t::cap_notification_cap as u64 {
+        let mut new_cap = cap_notification_cap_set_capNtfnCanSend(
+                      cap, cap_notification_cap_get_capNtfnCanSend(cap) &
+                      seL4_CapRights_get_capAllowWrite(cap_rights));
+        new_cap = cap_notification_cap_set_capNtfnCanReceive(new_cap,
+                                                             cap_notification_cap_get_capNtfnCanReceive(cap) &
+                                                             seL4_CapRights_get_capAllowRead(cap_rights));
+        return new_cap;
+    }
+    panic!("Invalid cap type");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn
+createNewObjects(t: u64, parent: *mut cte_t, slots: slot_range_t,
+                 regionBase: u64, userSize: u64, deviceMemory: bool_t) {
+    let objectSize = getObjectSize(t, userSize);
+    let totalObjectSize = slots.length << objectSize;
+    let nextFreeArea = regionBase;
+    let mut i: u64 = 0;
+    while i < slots.length {
+        let cap = createObject(t, nextFreeArea + (i << objectSize), userSize, deviceMemory);
+        insertNewCap(parent, slots.cnode.offset((slots.offset + i) as isize), cap);
+        i += 1;
+    }
+}
+
+//#[no_mangle]
+//pub unsafe extern "C" fn
+//decodeInvocation(invLabel: u64, length: u64,
+//                 capIndex: u64, slot: *mut cte_t, cap: cap_t,
+//                 excaps: extra_caps_t, block: bool_t, call: bool_t,
+//                 buffer: *mut u64) -> u64 {
+//    if isArchCap(cap) != 0u64 {
+//        return Arch_decodeInvocation(invLabel, length, capIndex,
+//                                     slot, cap, excaps, call, buffer);
+//    }
+//    let cap_type = cap_get_capType(cap);
+//    //kprintf("%lu\n\0".as_ptr(), cap_type);
+//    if cap_type == cap_tag_t::cap_null_cap as u64 {
+//        userError!("Attempted to invoke a null cap #%lu.", capIndex);
+//        current_syscall_error.type_ = seL4_Error::seL4_InvalidCapability as u64;
+//        current_syscall_error.invalidCapNumber = 0;
+//        return exception::EXCEPTION_SYSCALL_ERROR as u64;
+//    } else if cap_type == cap_tag_t::cap_zombie_cap as u64 {
+//        userError!("Attempted to invoke a zombei cap #%lu.", capIndex);
+//        current_syscall_error.type_ = seL4_Error::seL4_InvalidCapability as u64;
+//        current_syscall_error.invalidCapNumber = 0;
+//        return exception::EXCEPTION_SYSCALL_ERROR as u64;
+//    } else if cap_type == cap_tag_t::cap_endpoint_cap as u64 {
+//        if cap_endpoint_cap_get_capCanSend(cap) == 0u64 {
+//            userError!("Attempted to invoke a read-only endpoint cap #%lu.", capIndex);
+//            current_syscall_error.type_ = seL4_Error::seL4_InvalidCapability as u64;
+//            current_syscall_error.invalidCapNumber = 0;
+//            return exception::EXCEPTION_SYSCALL_ERROR as u64;
+//        }
+//        setThreadState(node_state!(ksCurThread), _thread_state::ThreadState_Restart as u64);
+//        return performInvocation_Endpoint(
+//                   cap_endpoint_cap_get_capEPPtr(cap) as *mut endpoint_t,
+//                   cap_endpoint_cap_get_capEPBadge(cap),
+//                   cap_endpoint_cap_get_capCanGrant(cap), block, call);
+//    } else if cap_type == cap_tag_t::cap_notification_cap as u64 {
+//        if cap_notification_cap_get_capNtfnCanSend(cap) == 0u64 {
+//            userError!("Attempted to invoke a read-only notification cap #%lu", capIndex);
+//            current_syscall_error.type_ = seL4_Error::seL4_InvalidCapability as u64;
+//            current_syscall_error.invalidCapNumber = 0;
+//            return exception::EXCEPTION_SYSCALL_ERROR as u64;
+//        }
+//        setThreadState(node_state!(ksCurThread), _thread_state::ThreadState_Restart as u64);
+//        return performInvocation_Notification(
+//                   cap_notification_cap_get_capNtfnPtr(cap) as *mut notification_t,
+//                   cap_notification_cap_get_capNtfnBadge(cap));
+//    } else if cap_type == cap_tag_t::cap_reply_cap as u64 {
+//        if cap_reply_cap_get_capReplyMaster(cap) != 0u64 {
+//            userError!("Attempted to invoke an invalid reply cap #%lu.", capIndex);
+//            current_syscall_error.type_ = seL4_Error::seL4_InvalidCapability as u64;
+//            current_syscall_error.invalidCapNumber = 0;
+//            return exception::EXCEPTION_SYSCALL_ERROR as u64;
+//        }
+//        setThreadState(node_state!(ksCurThread), _thread_state::ThreadState_Restart as u64);
+//        return performInvocation_Reply(cap_reply_cap_get_capTCBPtr(cap) as *mut tcb_t, slot);
+//    } else if cap_type == cap_tag_t::cap_thread_cap as u64 {
+//        return decodeTCBInvocation(invLabel, length, cap, slot, excaps, call, buffer);
+//    } else if cap_type == cap_tag_t::cap_domain_cap as u64 {
+//        return decodeDomainInvocation(invLabel, length, excaps, buffer);
+//    } else if cap_type == cap_tag_t::cap_cnode_cap as u64 {
+//        return decodeCNodeInvocation(invLabel, length, cap, excaps, buffer);
+//    } else if cap_type == cap_tag_t::cap_untyped_cap as u64 {
+//        return decodeUntypedInvocation(invLabel, length, slot, cap, excaps, call, buffer);
+//    } else if cap_type == cap_tag_t::cap_irq_control_cap as u64 {
+//        return decodeIRQControlInvocation(invLabel, length, slot, excaps, buffer);
+//    } else if cap_type == cap_tag_t::cap_irq_handler_cap as u64 {
+//        return decodeIRQHandlerInvocation(invLabel, cap_irq_handler_cap_get_capIRQ(cap), excaps);
+//    }
+//    //kprintf("test\n\0".as_ptr());
+//    panic!("Invalid cap type");
+//}
 
 #[no_mangle]
 pub unsafe extern "C" fn

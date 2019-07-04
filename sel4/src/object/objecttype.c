@@ -364,58 +364,58 @@
 //    }
 //}
 
-cap_t CONST
-maskCapRights(seL4_CapRights_t cap_rights, cap_t cap)
-{
-    if (isArchCap(cap)) {
-        return Arch_maskCapRights(cap_rights, cap);
-    }
-
-    switch (cap_get_capType(cap)) {
-    case cap_null_cap:
-    case cap_domain_cap:
-    case cap_cnode_cap:
-    case cap_untyped_cap:
-    case cap_reply_cap:
-    case cap_irq_control_cap:
-    case cap_irq_handler_cap:
-    case cap_zombie_cap:
-    case cap_thread_cap:
-        return cap;
-
-    case cap_endpoint_cap: {
-        cap_t new_cap;
-
-        new_cap = cap_endpoint_cap_set_capCanSend(
-                      cap, cap_endpoint_cap_get_capCanSend(cap) &
-                      seL4_CapRights_get_capAllowWrite(cap_rights));
-        new_cap = cap_endpoint_cap_set_capCanReceive(
-                      new_cap, cap_endpoint_cap_get_capCanReceive(cap) &
-                      seL4_CapRights_get_capAllowRead(cap_rights));
-        new_cap = cap_endpoint_cap_set_capCanGrant(
-                      new_cap, cap_endpoint_cap_get_capCanGrant(cap) &
-                      seL4_CapRights_get_capAllowGrant(cap_rights));
-
-        return new_cap;
-    }
-
-    case cap_notification_cap: {
-        cap_t new_cap;
-
-        new_cap = cap_notification_cap_set_capNtfnCanSend(
-                      cap, cap_notification_cap_get_capNtfnCanSend(cap) &
-                      seL4_CapRights_get_capAllowWrite(cap_rights));
-        new_cap = cap_notification_cap_set_capNtfnCanReceive(new_cap,
-                                                             cap_notification_cap_get_capNtfnCanReceive(cap) &
-                                                             seL4_CapRights_get_capAllowRead(cap_rights));
-
-        return new_cap;
-    }
-
-    default:
-        fail("Invalid cap type"); /* Sentinel for invalid enums */
-    }
-}
+//cap_t CONST
+//maskCapRights(seL4_CapRights_t cap_rights, cap_t cap)
+//{
+//    if (isArchCap(cap)) {
+//        return Arch_maskCapRights(cap_rights, cap);
+//    }
+//
+//    switch (cap_get_capType(cap)) {
+//    case cap_null_cap:
+//    case cap_domain_cap:
+//    case cap_cnode_cap:
+//    case cap_untyped_cap:
+//    case cap_reply_cap:
+//    case cap_irq_control_cap:
+//    case cap_irq_handler_cap:
+//    case cap_zombie_cap:
+//    case cap_thread_cap:
+//        return cap;
+//
+//    case cap_endpoint_cap: {
+//        cap_t new_cap;
+//
+//        new_cap = cap_endpoint_cap_set_capCanSend(
+//                      cap, cap_endpoint_cap_get_capCanSend(cap) &
+//                      seL4_CapRights_get_capAllowWrite(cap_rights));
+//        new_cap = cap_endpoint_cap_set_capCanReceive(
+//                      new_cap, cap_endpoint_cap_get_capCanReceive(cap) &
+//                      seL4_CapRights_get_capAllowRead(cap_rights));
+//        new_cap = cap_endpoint_cap_set_capCanGrant(
+//                      new_cap, cap_endpoint_cap_get_capCanGrant(cap) &
+//                      seL4_CapRights_get_capAllowGrant(cap_rights));
+//
+//        return new_cap;
+//    }
+//
+//    case cap_notification_cap: {
+//        cap_t new_cap;
+//
+//        new_cap = cap_notification_cap_set_capNtfnCanSend(
+//                      cap, cap_notification_cap_get_capNtfnCanSend(cap) &
+//                      seL4_CapRights_get_capAllowWrite(cap_rights));
+//        new_cap = cap_notification_cap_set_capNtfnCanReceive(new_cap,
+//                                                             cap_notification_cap_get_capNtfnCanReceive(cap) &
+//                                                             seL4_CapRights_get_capAllowRead(cap_rights));
+//
+//        return new_cap;
+//    }
+//
+//    default:
+//        fail("Invalid cap type"); /* Sentinel for invalid enums */
+//    }
+//}
 
 cap_t
 createObject(object_t t, void *regionBase, word_t userSize, bool_t deviceMemory)
@@ -485,34 +485,34 @@ createObject(object_t t, void *regionBase, word_t userSize, bool_t deviceMemory)
     }
 }
 
-void
-createNewObjects(object_t t, cte_t *parent, slot_range_t slots,
-                 void *regionBase, word_t userSize, bool_t deviceMemory)
-{
-    word_t objectSize;
-    void *nextFreeArea;
-    word_t i;
-    word_t totalObjectSize UNUSED;
-
-    /* ghost check that we're visiting less bytes than the max object size */
-    objectSize = getObjectSize(t, userSize);
-    totalObjectSize = slots.length << objectSize;
-    /** GHOSTUPD: "(gs_get_assn cap_get_capSizeBits_'proc \<acute>ghost'state = 0
-        \<or> \<acute>totalObjectSize <= gs_get_assn cap_get_capSizeBits_'proc \<acute>ghost'state, id)" */
-
-    /* Create the objects. */
-    nextFreeArea = regionBase;
-    for (i = 0; i < slots.length; i++) {
-        /* Create the object. */
-        /** AUXUPD: "(True, typ_region_bytes (ptr_val \<acute> nextFreeArea + ((\<acute> i) << unat (\<acute> objectSize))) (unat (\<acute> objectSize)))" */
-        cap_t cap = createObject(t, (void *)((word_t)nextFreeArea + (i << objectSize)), userSize, deviceMemory);
-
-        /* Insert the cap into the user's cspace. */
-        insertNewCap(parent, &slots.cnode[slots.offset + i], cap);
-
-        /* Move along to the next region of memory. been merged into a formula of i */
-    }
-}
+//void
+//createNewObjects(object_t t, cte_t *parent, slot_range_t slots,
+//                 void *regionBase, word_t userSize, bool_t deviceMemory)
+//{
+//    word_t objectSize;
+//    void *nextFreeArea;
+//    word_t i;
+//    word_t totalObjectSize UNUSED;
+//
+//    /* ghost check that we're visiting less bytes than the max object size */
+//    objectSize = getObjectSize(t, userSize);
+//    totalObjectSize = slots.length << objectSize;
+//    /** GHOSTUPD: "(gs_get_assn cap_get_capSizeBits_'proc \<acute>ghost'state = 0
+//        \<or> \<acute>totalObjectSize <= gs_get_assn cap_get_capSizeBits_'proc \<acute>ghost'state, id)" */
+//
+//    /* Create the objects. */
+//    nextFreeArea = regionBase;
+//    for (i = 0; i < slots.length; i++) {
+//        /* Create the object. */
+//        /** AUXUPD: "(True, typ_region_bytes (ptr_val \<acute> nextFreeArea + ((\<acute> i) << unat (\<acute> objectSize))) (unat (\<acute> objectSize)))" */
+//        cap_t cap = createObject(t, (void *)((word_t)nextFreeArea + (i << objectSize)), userSize, deviceMemory);
+//
+//        /* Insert the cap into the user's cspace. */
+//        insertNewCap(parent, &slots.cnode[slots.offset + i], cap);
+//
+//        /* Move along to the next region of memory. been merged into a formula of i */
+//    }
+//}
 
 exception_t
 decodeInvocation(word_t invLabel, word_t length,

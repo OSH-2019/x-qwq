@@ -115,6 +115,21 @@ pub fn seL4_MessageInfo_new(label:u64,capsUnwrapped:u64,extraCaps:u64,length:u64
     }
 }
 
+#[inline]
+pub fn seL4_CapRights_get_capAllowGrant(seL4_CapRights: seL4_CapRights_t) -> u64 {
+    (seL4_CapRights.words[0] & 0x4u64) >> 2
+}
+
+#[inline]
+pub fn seL4_CapRights_get_capAllowRead(seL4_CapRights: seL4_CapRights_t) -> u64 {
+    (seL4_CapRights.words[0] & 0x2u64) >> 1
+}
+
+#[inline]
+pub fn seL4_CapRights_get_capAllowWrite(seL4_CapRights: seL4_CapRights_t) -> u64 {
+    seL4_CapRights.words[0] & 0x1u64
+}
+
 //include/api/types.h
 pub const seL4_MsgMaxLength:u64=120;
 #[inline]

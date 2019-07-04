@@ -227,6 +227,27 @@ pub fn cap_endpoint_cap_set_capEPBadge(mut cap: cap_t, v64: u64) -> cap_t {
 }
 
 #[inline]
+pub fn cap_endpoint_cap_set_capCanSend(mut cap: cap_t, v64: u64) -> cap_t {
+    cap.words[0] &= !0x100000000000000u64;
+    cap.words[0] |= (v64 << 56) & 0x100000000000000u64;
+    cap
+}
+
+#[inline]
+pub fn cap_endpoint_cap_set_capCanReceive(mut cap: cap_t, v64: u64) -> cap_t {
+    cap.words[0] &= !0x200000000000000u64;
+    cap.words[0] |= (v64 << 57) & 0x200000000000000u64;
+    cap
+}
+
+#[inline]
+pub fn cap_endpoint_cap_set_capCanGrant(mut cap: cap_t, v64: u64) -> cap_t {
+    cap.words[0] &= !0x400000000000000u64;
+    cap.words[0] |= (v64 << 58) & 0x400000000000000u64;
+    cap
+}
+
+#[inline]
 pub fn cap_notification_cap_get_capNtfnBadge(cap:cap_t)->u64{
     cap.words[1] & 0xffffffffffffffffu64
 }
@@ -241,6 +262,25 @@ pub fn cap_notification_cap_set_capNtfnBadge(mut cap: cap_t, v64: u64) -> cap_t 
 #[inline]
 pub fn cap_notification_cap_get_capNtfnCanSend(cap: cap_t) -> u64 {
     (cap.words[0] & 0x200000000000000u64) >> 57
+}
+
+#[inline]
+pub fn cap_notification_cap_set_capNtfnCanSend(mut cap: cap_t, v64: u64) -> cap_t {
+    cap.words[0] &= !0x200000000000000u64;
+    cap.words[0] |= (v64 << 57) & 0x200000000000000u64;
+    cap
+}
+
+#[inline]
+pub fn cap_notification_cap_get_capNtfnCanReceive(cap: cap_t) -> u64 {
+    (cap.words[0] & 0x400000000000000u64) >> 58
+}
+
+#[inline]
+pub fn cap_notification_cap_set_capNtfnCanReceive(mut cap: cap_t, v64: u64) -> cap_t {
+    cap.words[0] &= !0x400000000000000u64;
+    cap.words[0] |= (v64 << 58) & 0x400000000000000u64;
+    cap
 }
 
 #[inline]
