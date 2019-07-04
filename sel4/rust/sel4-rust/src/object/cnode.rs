@@ -1,8 +1,8 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
-#![allow(unused_variables)]
 #![allow(unused_imports)]
 #![allow(non_upper_case_globals)]
+#![allow(unused_attributes)]
 
 use crate::types::*;
 use crate::structures::*;
@@ -312,7 +312,7 @@ unsafe fn setUntypedCapAsFull(srcCap: cap_t, newCap: cap_t, srcSlot: *mut cte_t)
         cap_get_capType(newCap) == cap_tag_t::cap_untyped_cap as u64 {
         if cap_untyped_cap_get_capPtr(srcCap) == cap_untyped_cap_get_capPtr(newCap) &&
             cap_untyped_cap_get_capBlockSize(newCap) == cap_untyped_cap_get_capBlockSize(srcCap) {
-                cap_untyped_cap_ptr_set_capFreeIndex(&mut (*srcSlot).cap as *mut cap_t, (1 << cap_untyped_cap_get_capBlockSize(srcCap)) - 4);
+                cap_untyped_cap_ptr_set_capFreeIndex(&mut (*srcSlot).cap, (1 << cap_untyped_cap_get_capBlockSize(srcCap)) - 4);
         }
     }
 }
@@ -328,9 +328,9 @@ pub unsafe extern "C" fn cteInsert(newCap: cap_t, srcSlot: *mut cte_t, destSlot:
     setUntypedCapAsFull(srcCap, newCap, srcSlot);
     (*destSlot).cap = newCap;
     (*destSlot).cteMDBNode = newMDB;
-    mdb_node_ptr_set_mdbNext(&mut (*srcSlot).cteMDBNode as *mut mdb_node_t, destSlot as u64);
+    mdb_node_ptr_set_mdbNext(&mut (*srcSlot).cteMDBNode, destSlot as u64);
     if mdb_node_get_mdbNext(newMDB) != 0u64 {
-        mdb_node_ptr_set_mdbPrev(&mut (*(mdb_node_get_mdbNext(newMDB) as *mut cte_t)).cteMDBNode as *mut mdb_node_t, destSlot as u64);
+        mdb_node_ptr_set_mdbPrev(&mut (*(mdb_node_get_mdbNext(newMDB) as *mut cte_t)).cteMDBNode, destSlot as u64);
     }
 }
 
@@ -343,11 +343,11 @@ pub unsafe extern "C" fn cteMove(newCap: cap_t, srcSlot: *mut cte_t, destSlot: *
     (*srcSlot).cteMDBNode = mdb_node_new(0, 0, 0, 0);
     let prev_ptr: u64 = mdb_node_get_mdbPrev(mdb);
     if prev_ptr != 0u64 {
-        mdb_node_ptr_set_mdbNext(&mut (*(prev_ptr as *mut cte_t)).cteMDBNode as *mut mdb_node_t, destSlot as u64);
+        mdb_node_ptr_set_mdbNext(&mut (*(prev_ptr as *mut cte_t)).cteMDBNode, destSlot as u64);
     }
     let next_ptr: u64 = mdb_node_get_mdbNext(mdb);
     if next_ptr != 0u64 {
-        mdb_node_ptr_set_mdbPrev(&mut (*(next_ptr as *mut cte_t)).cteMDBNode as *mut mdb_node_t, destSlot as u64);
+        mdb_node_ptr_set_mdbPrev(&mut (*(next_ptr as *mut cte_t)).cteMDBNode, destSlot as u64);
     }
 }
 
@@ -368,22 +368,22 @@ pub unsafe extern "C" fn cteSwap(cap1: cap_t, slot1: *mut cte_t, cap2: cap_t, sl
     let mdb1: mdb_node_t = (*slot1).cteMDBNode;
     let mut prev_ptr: u64 = mdb_node_get_mdbPrev(mdb1);
     if prev_ptr != 0u64 {
-        mdb_node_ptr_set_mdbNext(&mut (*(prev_ptr as *mut cte_t)).cteMDBNode as *mut mdb_node_t, slot2 as u64);
+        mdb_node_ptr_set_mdbNext(&mut (*(prev_ptr as *mut cte_t)).cteMDBNode, slot2 as u64);
     }
     let mut next_ptr: u64 = mdb_node_get_mdbNext(mdb1);
     if next_ptr != 0u64 {
-        mdb_node_ptr_set_mdbPrev(&mut (*(next_ptr as *mut cte_t)).cteMDBNode as *mut mdb_node_t, slot2 as u64);
+        mdb_node_ptr_set_mdbPrev(&mut (*(next_ptr as *mut cte_t)).cteMDBNode, slot2 as u64);
     }
     let mdb2: mdb_node_t = (*slot2).cteMDBNode;
     (*slot1).cteMDBNode = mdb2;
     (*slot2).cteMDBNode = mdb1;
     prev_ptr = mdb_node_get_mdbPrev(mdb2);
     if prev_ptr != 0u64 {
-        mdb_node_ptr_set_mdbNext(&mut (*(prev_ptr as *mut cte_t)).cteMDBNode as *mut mdb_node_t, slot1 as u64);
+        mdb_node_ptr_set_mdbNext(&mut (*(prev_ptr as *mut cte_t)).cteMDBNode, slot1 as u64);
     }
     next_ptr = mdb_node_get_mdbNext(mdb2);
     if next_ptr != 0u64 {
-        mdb_node_ptr_set_mdbPrev(&mut (*(next_ptr as *mut cte_t)).cteMDBNode as *mut mdb_node_t, slot1 as u64);
+        mdb_node_ptr_set_mdbPrev(&mut (*(next_ptr as *mut cte_t)).cteMDBNode, slot1 as u64);
     }
 }
 
@@ -423,13 +423,13 @@ pub unsafe extern "C" fn emptySlot(slot: *mut cte_t, cleanupInfo: cap_t) {
         let prev = mdb_node_get_mdbPrev(mdbNode) as *mut cte_t;
         let next = mdb_node_get_mdbNext(mdbNode) as *mut cte_t;
         if prev as u64 != 0u64 {
-            mdb_node_ptr_set_mdbNext(&mut (*prev).cteMDBNode as *mut mdb_node_t, next as u64);
+            mdb_node_ptr_set_mdbNext(&mut (*prev).cteMDBNode, next as u64);
         }
         if next as u64 != 0u64 {
-            mdb_node_ptr_set_mdbPrev(&mut (*next).cteMDBNode as *mut mdb_node_t, prev as u64);
+            mdb_node_ptr_set_mdbPrev(&mut (*next).cteMDBNode, prev as u64);
         }
         if next as u64 != 0u64 {
-            mdb_node_ptr_set_mdbFirstBadged(&mut (*next).cteMDBNode as *mut mdb_node_t, 
+            mdb_node_ptr_set_mdbFirstBadged(&mut (*next).cteMDBNode, 
                 mdb_node_get_mdbFirstBadged((*next).cteMDBNode) | mdb_node_get_mdbFirstBadged(mdbNode));
         }
         (*slot).cap = cap_null_cap_new();
@@ -528,6 +528,7 @@ unsafe fn reduceZombie(slot: *mut cte_t, immediate: bool_t) -> u64 {
     0u64
 }
 
+#[allow(unused_variables)]
 #[no_mangle]
 pub unsafe extern "C" fn cteDeleteOne(slot: *mut cte_t) {
     let cap_type = cap_get_capType((*slot).cap);
@@ -544,9 +545,9 @@ pub unsafe extern "C" fn insertNewCap(parent: *mut cte_t, slot: *mut cte_t, cap:
     (*slot).cap = cap;
     (*slot).cteMDBNode = mdb_node_new(next as u64, 1u64, 1u64, parent as u64);
     if next as u64 != 0u64 {
-        mdb_node_ptr_set_mdbPrev(&mut (*next).cteMDBNode as *mut mdb_node_t, slot as u64);
+        mdb_node_ptr_set_mdbPrev(&mut (*next).cteMDBNode, slot as u64);
     }
-    mdb_node_ptr_set_mdbNext(&mut (*parent).cteMDBNode as *mut mdb_node_t, slot as u64);
+    mdb_node_ptr_set_mdbNext(&mut (*parent).cteMDBNode, slot as u64);
 }
 
 #[no_mangle]
@@ -555,8 +556,8 @@ pub unsafe extern "C" fn setupReplyMaster(thread: *mut tcb_t) {
     if cap_get_capType((*slot).cap) == cap_tag_t::cap_null_cap as u64 {
         (*slot).cap = cap_reply_cap_new(1u64, thread as u64);
         (*slot).cteMDBNode = mdb_node_new(0, 0, 0, 0);
-        mdb_node_ptr_set_mdbRevocable(&mut (*slot).cteMDBNode as *mut mdb_node_t, 1u64);
-        mdb_node_ptr_set_mdbFirstBadged(&mut (*slot).cteMDBNode as *mut mdb_node_t, 1u64);
+        mdb_node_ptr_set_mdbRevocable(&mut (*slot).cteMDBNode, 1u64);
+        mdb_node_ptr_set_mdbFirstBadged(&mut (*slot).cteMDBNode, 1u64);
     }
 }
 

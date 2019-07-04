@@ -50,6 +50,7 @@ extern "C"{
     fn kprintf(format: *const u8, ...);
 }
 
+#[allow(unused_variables)]
 #[inline]
 pub unsafe fn Arch_getSanitiseRegisterInfo(thread: *mut tcb_t) -> bool_t {
     0u64

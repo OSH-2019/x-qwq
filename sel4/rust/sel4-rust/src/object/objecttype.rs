@@ -3,6 +3,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
+#![allow(unused_attributes)]
 
 use crate::types::*;
 use crate::structures::*;
@@ -11,6 +12,7 @@ use crate::object::cap::*;
 use crate::object::cnode::*;
 use crate::object::notification::*;
 use crate::object::arch_structures::*;
+use crate::object::endpoint::sendIPC;
 
 extern "C" {
     static mut ksCurThread: *mut tcb_t;
@@ -26,8 +28,6 @@ extern "C" {
     fn Arch_sameObjectAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
     fn tcbDebugRemove(tcb: *mut tcb_t);
     fn cancelAllIPC(epptr: *mut endpoint_t);
-    fn sendIPC(blocking: bool_t, do_call: bool_t, badge: u64,
-               canGrant: bool_t, thread: *mut tcb_t, epptr: *mut endpoint_t);
 }
 
 pub enum seL4_ObjectType {

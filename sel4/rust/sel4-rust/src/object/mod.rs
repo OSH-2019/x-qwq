@@ -5,3 +5,4 @@ pub mod objecttype;
 pub mod cap;
 pub mod notification;
 pub mod tcb;
+pub mod endpoint;

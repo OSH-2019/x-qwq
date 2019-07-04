@@ -3,6 +3,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
+#![allow(unused_attributes)]
 
 use crate::types::*;
 use crate::structures::*;
@@ -93,6 +94,7 @@ setMRs_lookup_failure(receiver: *mut tcb_t, receiveIPCBuffer: *mut u64,
     panic!("Invalid lookup failure");
 }
 
+#[allow(unused_variables)]
 #[inline]
 pub unsafe fn addToBitmap(cpu: u64, dom: u64, prio: u64) {
     let l1index = prio_to_l1index(prio);
@@ -102,6 +104,7 @@ pub unsafe fn addToBitmap(cpu: u64, dom: u64, prio: u64) {
     ksReadyQueuesL2Bitmap[dom as usize][l1index_inverted as usize] |= 1u64 << (prio & MASK!(wordRadix));
 }
 
+#[allow(unused_variables)]
 #[inline]
 pub unsafe fn removeFromBitmap(cpu: u64, dom: u64, prio: u64) {
     let l1index = prio_to_l1index(prio);
@@ -133,7 +136,7 @@ pub unsafe extern "C" fn tcbSchedEnqueue(tcb: *mut tcb_t) {
         queue.head = tcb;
         //ignore smp
         ksReadyQueues[idx] = queue;
-        thread_state_ptr_set_tcbQueued(&mut (*tcb).tcbState as *mut thread_state_t, 1u64);
+        thread_state_ptr_set_tcbQueued(&mut (*tcb).tcbState, 1u64);
     }
 }
 
@@ -157,7 +160,7 @@ pub unsafe extern "C" fn tcbSchedAppend(tcb: *mut tcb_t) {
         queue.end = tcb;
         //ignore smp
         ksReadyQueues[idx] = queue;
-        thread_state_ptr_set_tcbQueued(&mut (*tcb).tcbState as *mut thread_state_t, 1u64);
+        thread_state_ptr_set_tcbQueued(&mut (*tcb).tcbState, 1u64);
     }
 }
 
@@ -186,7 +189,7 @@ pub unsafe extern "C" fn tcbSchedDequeue(tcb: *mut tcb_t) {
         }
         //ignore smp
         ksReadyQueues[idx] = queue;
-        thread_state_ptr_set_tcbQueued(&mut (*tcb).tcbState as *mut thread_state_t, 0u64);
+        thread_state_ptr_set_tcbQueued(&mut (*tcb).tcbState, 0u64);
     }
 }
 

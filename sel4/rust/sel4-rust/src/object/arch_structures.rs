@@ -2,6 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
+
 use crate::types;
 use crate::types::bool_t;
 use crate::types::word_t;
@@ -241,9 +242,9 @@ pub fn cap_untyped_cap_get_capIsDevice(cap: cap_t) -> u64 {
 }
 
 #[inline]
-pub unsafe fn cap_untyped_cap_ptr_set_capFreeIndex(cap_ptr: *mut cap_t, v64: u64) {
-    (*cap_ptr).words[1] &= !0xffffffffffff0000u64;
-    (*cap_ptr).words[1] |= (v64 << 16) & 0xffffffffffff0000u64;
+pub fn cap_untyped_cap_ptr_set_capFreeIndex(cap_ptr: &mut cap_t, v64: u64) {
+    cap_ptr.words[1] &= !0xffffffffffff0000u64;
+    cap_ptr.words[1] |= (v64 << 16) & 0xffffffffffff0000u64;
 }
 
 #[inline]
@@ -330,9 +331,9 @@ pub fn thread_state_ptr_set_tsType(thread_state_ptr:&mut thread_state_t,v64:u64)
 }
 
 #[inline]
-pub unsafe fn thread_state_ptr_set_blockingObject(thread_state_ptr: *mut thread_state_t, v64: u64) {
-    (*thread_state_ptr).words[0] &= !0xfffffffffff0u64;
-    (*thread_state_ptr).words[0] |= v64 & 0xfffffffffff0u64;
+pub fn thread_state_ptr_set_blockingObject(thread_state_ptr:&mut thread_state_t, v64: u64) {
+    thread_state_ptr.words[0] &= !0xfffffffffff0u64;
+    thread_state_ptr.words[0] |= v64 & 0xfffffffffff0u64;
 }
 
 #[inline]
@@ -341,9 +342,33 @@ pub fn thread_state_get_tcbQueued(thread_state: thread_state_t) -> u64 {
 }
 
 #[inline]
-pub unsafe fn thread_state_ptr_set_tcbQueued(thread_state_ptr: *mut thread_state_t, v64: u64) {
-    (*thread_state_ptr).words[1] &= !0x1u64;
-    (*thread_state_ptr).words[1] |= v64 & 0x1u64;
+pub fn thread_state_ptr_set_tcbQueued(thread_state_ptr:&mut thread_state_t, v64: u64) {
+    thread_state_ptr.words[1] &= !0x1u64;
+    thread_state_ptr.words[1] |= v64 & 0x1u64;
+}
+
+#[inline]
+pub fn thread_state_ptr_set_blockingIPCBadge(thread_state_ptr:&mut thread_state_t,v64:u64){
+    thread_state_ptr.words[2] &= !0xffffffffffffffffu64;
+    thread_state_ptr.words[2] |= v64 & 0xffffffffffffffff;
+}
+
+#[inline]
+pub fn thread_state_ptr_set_blockingIPCCanGrant(thread_state_ptr:&mut thread_state_t,v64:u64){
+    thread_state_ptr.words[1] &= !0x8u64;
+    thread_state_ptr.words[1] |= (v64<<3)&0x8;
+}
+
+#[inline]
+pub fn thread_state_ptr_set_blockingIPCIsCall(thread_state_ptr:&mut thread_state_t,v64:u64){
+    thread_state_ptr.words[1] &= !0x4u64;
+    thread_state_ptr.words[1] |= (v64<<2)&0x4;
+}
+
+#[inline]
+pub fn endpoint_ptr_set_state(endpoint_ptr:&mut endpoint_t,v64:u64){
+    endpoint_ptr.words[0] &= !0x3u64;
+    endpoint_ptr.words[0] |= v64 & 0x3;
 }
 
 #[repr(C)]
@@ -351,6 +376,38 @@ pub struct endpoint{
     words:[u64;2]
 }
 pub type endpoint_t=endpoint;
+
+#[inline]
+pub fn endpoint_ptr_get_epQueue_head(endpoint_ptr:&endpoint_t)->u64{
+    endpoint_ptr.words[1] & 0xffffffffffffffffu64
+}
+
+#[inline]
+pub fn endpoint_ptr_get_epQueue_tail(endpoint_ptr:&endpoint_t)->u64{
+    let mut ret:u64;
+    ret=endpoint_ptr.words[0] & 0xfffffffffffcu64;
+    if (ret & (1u64<<47))!=0 {
+        ret |= 0xffff000000000000;
+    }
+    ret
+}
+
+#[inline]
+pub fn endpoint_ptr_set_epQueue_head(endpoint_ptr:&mut endpoint_t,v64:u64){
+    endpoint_ptr.words[1] &= !0xffffffffffffffffu64;
+    endpoint_ptr.words[1] |= v64 & 0xffffffffffffffff;
+}
+
+#[inline]
+pub fn endpoint_ptr_set_epQueue_tail(endpoint_ptr:&mut endpoint_t,v64:u64){
+    endpoint_ptr.words[0] &= !0xfffffffffffcu64;
+    endpoint_ptr.words[0] |= v64 & 0xfffffffffffc;
+}
+
+#[inline]
+pub fn endpoint_ptr_get_state(endpoint_ptr:&endpoint_t)->u64{
+    endpoint_ptr.words[0] & 0x3u64
+}
 
 #[repr(C)]
 pub struct seL4_Fault{
@@ -378,12 +435,18 @@ pub fn seL4_Fault_NullFault_new()->seL4_Fault_t{
     }
 }
 
+#[allow(unused_variables)]
 #[inline]
 pub fn seL4_Fault_CapFault_new(address: u64, inReceivePhase: u64) -> seL4_Fault_t {
     seL4_Fault_t {
         words: [((inReceivePhase & 0x1u64) << 63) |
             ((seL4_Fault_tag_t::seL4_Fault_CapFault as u64) & 0x7u64), 0],
     }
+}
+
+#[inline]
+pub fn seL4_Fault_ptr_get_seL4_FaultType(seL4_Fault:&seL4_Fault_t)->u64{
+    seL4_Fault.words[0] & 0x7u64
 }
 
 //include/arch/x86/arch/machine/registerset.h
@@ -566,21 +629,21 @@ pub fn mdb_node_get_mdbPrev(mdb_node: mdb_node_t) -> u64 {
 }
 
 #[inline]
-pub unsafe fn mdb_node_ptr_set_mdbNext(mdb_node_ptr: *mut mdb_node_t, v64: u64) {
-    (*mdb_node_ptr).words[1] &= !0xfffffffffffcu64;
-    (*mdb_node_ptr).words[1] |= v64 & 0xfffffffffffcu64;
+pub fn mdb_node_ptr_set_mdbNext(mdb_node_ptr: &mut mdb_node_t, v64: u64) {
+    mdb_node_ptr.words[1] &= !0xfffffffffffcu64;
+    mdb_node_ptr.words[1] |= v64 & 0xfffffffffffcu64;
 }
 
 #[inline]
-pub unsafe fn mdb_node_ptr_set_mdbPrev(mdb_node_ptr: *mut mdb_node_t, v64: u64) {
-    (*mdb_node_ptr).words[0] &= !0xffffffffffffffffu64;
-    (*mdb_node_ptr).words[0] |= v64 & 0xffffffffffffffffu64;
+pub fn mdb_node_ptr_set_mdbPrev(mdb_node_ptr: &mut mdb_node_t, v64: u64) {
+    mdb_node_ptr.words[0] &= !0xffffffffffffffffu64;
+    mdb_node_ptr.words[0] |= v64 & 0xffffffffffffffffu64;
 }
 
 #[inline]
-pub unsafe fn mdb_node_ptr_set_mdbFirstBadged(mdb_node_ptr: *mut mdb_node_t, v64: u64) {
-    (*mdb_node_ptr).words[1] &= !0x1u64;
-    (*mdb_node_ptr).words[1] |= v64 & 0x1u64;
+pub fn mdb_node_ptr_set_mdbFirstBadged(mdb_node_ptr: &mut mdb_node_t, v64: u64) {
+    mdb_node_ptr.words[1] &= !0x1u64;
+    mdb_node_ptr.words[1] |= v64 & 0x1u64;
 }
 
 #[inline]
@@ -591,9 +654,9 @@ pub fn mdb_node_new(mdbNext: u64, mdbRevocable: u64, mdbFirstBadged: u64, mdbPre
 }
 
 #[inline]
-pub unsafe fn mdb_node_ptr_set_mdbRevocable(mdb_node_ptr: *mut mdb_node_t, v64: u64) {
-    (*mdb_node_ptr).words[1] &= !0x2u64;
-    (*mdb_node_ptr).words[1] |= (v64 << 1) & 0x2u64;
+pub fn mdb_node_ptr_set_mdbRevocable(mdb_node_ptr: &mut mdb_node_t, v64: u64) {
+    mdb_node_ptr.words[1] &= !0x2u64;
+    mdb_node_ptr.words[1] |= (v64 << 1) & 0x2u64;
 }
 
 pub enum lookup_fault_tag_t {
@@ -667,8 +730,8 @@ pub fn lookup_fault_missing_capability_new(bitsLeft: u64) -> lookup_fault_t {
 }
 
 #[inline]
-pub unsafe fn notification_ptr_get_ntfnQueue_head(notification_ptr: *mut notification_t) -> u64 {
-    let mut ret = (*notification_ptr).words[1] & 0xffffffffffffu64;
+pub fn notification_ptr_get_ntfnQueue_head(notification_ptr: & notification_t) -> u64 {
+    let mut ret = notification_ptr.words[1] & 0xffffffffffffu64;
     if (ret & (1u64 << 47)) != 0u64 {
         ret |= 0xffff000000000000u64;
     }
@@ -676,14 +739,14 @@ pub unsafe fn notification_ptr_get_ntfnQueue_head(notification_ptr: *mut notific
 }
 
 #[inline]
-pub unsafe fn notification_ptr_set_ntfnQueue_head(notification_ptr: *mut notification_t, v64: u64) {
-    (*notification_ptr).words[1] &= !0xffffffffffffu64;
-    (*notification_ptr).words[1] |= v64 & 0xffffffffffffu64;
+pub fn notification_ptr_set_ntfnQueue_head(notification_ptr: &mut notification_t, v64: u64) {
+    notification_ptr.words[1] &= !0xffffffffffffu64;
+    notification_ptr.words[1] |= v64 & 0xffffffffffffu64;
 }
 
 #[inline]
-pub unsafe fn notification_ptr_get_ntfnQueue_tail(notification_ptr: *mut notification_t) -> u64 {
-    let mut ret = (*notification_ptr).words[0] & 0xffffffffffff0000u64;
+pub fn notification_ptr_get_ntfnQueue_tail(notification_ptr: & notification_t) -> u64 {
+    let mut ret = notification_ptr.words[0] & 0xffffffffffff0000u64;
     if (ret & (1u64 << 47)) != 0u64 {
         ret |= 0xffff000000000000u64;
     }
@@ -691,36 +754,36 @@ pub unsafe fn notification_ptr_get_ntfnQueue_tail(notification_ptr: *mut notific
 }
 
 #[inline]
-pub unsafe fn notification_ptr_set_ntfnQueue_tail(notification_ptr: *mut notification_t, v64: u64) {
-    (*notification_ptr).words[0] &= !0xffffffffffff0000u64;
-    (*notification_ptr).words[0] |= (v64 << 16) & 0xffffffffffff0000u64;
+pub fn notification_ptr_set_ntfnQueue_tail(notification_ptr: &mut notification_t, v64: u64) {
+    notification_ptr.words[0] &= !0xffffffffffff0000u64;
+    notification_ptr.words[0] |= (v64 << 16) & 0xffffffffffff0000u64;
 }
 
 #[inline]
-pub unsafe fn notification_ptr_get_state(notification_ptr: *mut notification_t) -> u64 {
-    (*notification_ptr).words[0] & 0x3u64
+pub fn notification_ptr_get_state(notification_ptr: & notification_t) -> u64 {
+    notification_ptr.words[0] & 0x3u64
 }
 
 #[inline]
-pub unsafe fn notification_ptr_set_state(notification_ptr: *mut notification_t, v64: u64) {
-    (*notification_ptr).words[0] &= !0x3u64;
-    (*notification_ptr).words[0] |= v64 & 0x3u64;
+pub fn notification_ptr_set_state(notification_ptr: &mut notification_t, v64: u64) {
+    notification_ptr.words[0] &= !0x3u64;
+    notification_ptr.words[0] |= v64 & 0x3u64;
 }
 
 #[inline]
-pub unsafe fn notification_ptr_get_ntfnMsgIdentifier(notification_ptr: *mut notification_t) -> u64 {
-    (*notification_ptr).words[2] & 0xffffffffffffffffu64
+pub fn notification_ptr_get_ntfnMsgIdentifier(notification_ptr: & notification_t) -> u64 {
+    notification_ptr.words[2] & 0xffffffffffffffffu64
 }
 
 #[inline]
-pub unsafe fn notification_ptr_set_ntfnMsgIdentifier(notification_ptr: *mut notification_t, v64: u64) {
-    (*notification_ptr).words[2] &= !0xffffffffffffffffu64;
-    (*notification_ptr).words[2] |= v64 & 0xffffffffffffffffu64;
+pub fn notification_ptr_set_ntfnMsgIdentifier(notification_ptr: &mut notification_t, v64: u64) {
+    notification_ptr.words[2] &= !0xffffffffffffffffu64;
+    notification_ptr.words[2] |= v64 & 0xffffffffffffffffu64;
 }
 
 #[inline]
-pub unsafe fn notification_ptr_get_ntfnBoundTCB(notification_ptr: *mut notification_t) -> u64 {
-    let mut ret = (*notification_ptr).words[3] & 0xffffffffffffu64;
+pub fn notification_ptr_get_ntfnBoundTCB(notification_ptr: & notification_t) -> u64 {
+    let mut ret = notification_ptr.words[3] & 0xffffffffffffu64;
     if (ret & (1u64 << 47)) != 0u64 {
         ret |= 0xffff000000000000u64;
     }
@@ -728,14 +791,14 @@ pub unsafe fn notification_ptr_get_ntfnBoundTCB(notification_ptr: *mut notificat
 }
 
 #[inline]
-pub unsafe fn notification_ptr_set_ntfnBoundTCB(notification_ptr: *mut notification_t, v64: u64) {
+pub fn notification_ptr_set_ntfnBoundTCB(notification_ptr: &mut notification_t, v64: u64) {
     (*notification_ptr).words[3] &= !0xffffffffffffu64;
     (*notification_ptr).words[3] |= v64 & 0xffffffffffffu64;
 }
 
 #[inline]
-pub unsafe fn thread_state_ptr_get_tsType(thread_state_ptr: *mut thread_state_t) -> u64 {
-    (*thread_state_ptr).words[0] & 0xfu64
+pub fn thread_state_ptr_get_tsType(thread_state_ptr: & thread_state_t) -> u64 {
+    thread_state_ptr.words[0] & 0xfu64
 }
 
 #[repr(C)]

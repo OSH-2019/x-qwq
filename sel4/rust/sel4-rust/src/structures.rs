@@ -4,7 +4,6 @@
 #![allow(non_upper_case_globals)]
 use crate::types;
 use crate::types::word_t;
-use crate::object::*;
 use crate::object::arch_structures::*;
 
 //include/object/structures.h
