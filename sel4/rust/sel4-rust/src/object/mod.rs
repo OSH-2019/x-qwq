@@ -6,3 +6,4 @@ pub mod cap;
 pub mod notification;
 pub mod tcb;
 pub mod endpoint;
+pub mod interrupt;

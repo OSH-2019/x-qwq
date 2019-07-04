@@ -28,13 +28,12 @@ pub struct cte_t {
 }
 
 #[repr(C)]
-enum irq_state {
+pub enum irq_state {
     IRQInactive = 0,
     IRQSignal = 1,
     IRQTimer = 2,
     IRQReserved
 }
-type irq_state_t=u32;
 
 #[repr(C)]
 pub struct dschedule {

@@ -27,6 +27,34 @@ pub struct pte{
 }
 pub type pte_t=pte;
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct x86_irq_state_t {
+    words: [u32; 2],
+}
+
+#[inline]
+pub fn x86_irq_state_get_irqType(x86_irq_state: x86_irq_state_t) -> u32 {
+    (x86_irq_state.words[1] >> 28) & 0xfu32
+}
+
+#[inline]
+pub fn x86_irq_state_irq_ioapic_get_id(x86_irq_state: x86_irq_state_t) -> u32 {
+    (x86_irq_state.words[1] & 0xf800000u32) >> 23
+}
+
+#[inline]
+pub fn x86_irq_state_irq_ioapic_get_pin(x86_irq_state: x86_irq_state_t) -> u32 {
+    (x86_irq_state.words[1] & 0x7c0000u32) >> 18
+}
+
+#[inline]
+pub fn x86_irq_state_irq_ioapic_set_masked(mut x86_irq_state: x86_irq_state_t, v32: u32) -> x86_irq_state_t {
+    x86_irq_state.words[1] &= !0x8000u32;
+    x86_irq_state.words[1] |= (v32 << 15) & 0x8000u32;
+    x86_irq_state
+}
+
 const cap_zombie_cap:u64=18;
 #[inline]
 pub fn cap_zombie_cap_new(capZombieID:u64, capZombieType:u64)->cap_t{
@@ -211,6 +239,11 @@ pub fn cap_notification_cap_set_capNtfnBadge(mut cap: cap_t, v64: u64) -> cap_t 
 }
 
 #[inline]
+pub fn cap_notification_cap_get_capNtfnCanSend(cap: cap_t) -> u64 {
+    (cap.words[0] & 0x200000000000000u64) >> 57
+}
+
+#[inline]
 pub fn cap_untyped_cap_get_capPtr(cap: cap_t) -> u64 {
     let mut ret = cap.words[0] & 0xffffffffffffu64;
     if ret & (1u64 << 47) != 0 {
@@ -317,6 +350,13 @@ pub fn cap_endpoint_cap_get_capCanGrant(cap: cap_t) -> u64 {
 #[inline]
 pub fn cap_irq_handler_cap_get_capIRQ(cap: cap_t) -> u64 {
     cap.words[1] & 0xffu64
+}
+
+#[inline]
+pub fn cap_irq_handler_cap_new(capIRQ: u64) -> cap_t {
+    cap_t {
+        words: [((cap_tag_t::cap_irq_handler_cap as u64) & 0x1fu64) << 59, (capIRQ & 0xffu64)],
+    }
 }
 
 #[inline]
