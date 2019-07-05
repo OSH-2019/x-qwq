@@ -201,7 +201,7 @@ RUST:
 
 kernel.elf: $(OBJECTS) RUST
 	$(CPP) $(INCLUDE) src/plat/pc99/linker.lds -o lds.tmp -P -DCONFIG_ARCH_X86_64 -DHAVE_AUTOCONF
-	$(LD) $(LDFLAGS) $(OBJECTS) rust/sel4-rust/target/debug/libsel4_rust.a -T lds.tmp -o kernel.elf 
+	$(LD) $(LDFLAGS) $(OBJECTS) rust/sel4-rust/target/x86_64-sel4/debug/libsel4_rust.a -T lds.tmp -o kernel.elf 
 
 kernel: kernel.elf
 	objcopy -O elf32-i386 kernel.elf kernel
@@ -212,4 +212,4 @@ clean:
 	rm -f kernel.elf
 	rm -f kernel
 	rm -rf $(OBJECT_DIR)
-	cd rust/sel4-rust && cargo clean
+	cd rust/sel4-rust && xargo clean
