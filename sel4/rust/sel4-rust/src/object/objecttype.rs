@@ -10,7 +10,7 @@ use crate::failures::*;
 use crate::object::arch_structures::*;
 use crate::object::cap::*;
 use crate::object::cnode::*;
-use crate::object::endpoint::sendIPC;
+use crate::object::endpoint::{cancelAllIPC,sendIPC};
 use crate::object::interrupt::*;
 use crate::object::notification::*;
 use crate::object::untyped::*;
@@ -55,11 +55,9 @@ extern "C" {
         excaps: extra_caps_t,
         buffer: *mut u64,
     ) -> u64;
-    //fn deletedIRQHandler(irq: u8);
     fn Arch_sameRegionAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
     fn Arch_sameObjectAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
     fn tcbDebugRemove(tcb: *mut tcb_t);
-    fn cancelAllIPC(epptr: *mut endpoint_t);
     fn kprintf(format: *const u8, ...);
 }
 

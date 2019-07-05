@@ -424,6 +424,15 @@ pub fn thread_state_ptr_set_tsType(thread_state_ptr: &mut thread_state_t, v64: u
 }
 
 #[inline]
+pub fn thread_state_ptr_get_blockingObject(thread_state_ptr:&mut thread_state_t)->u64{
+    let mut ret:u64=thread_state_ptr.words[0] & 0xfffffffffff0u64;
+    if (ret & (1u64<<47)) !=0{
+        ret |= 0xffff000000000000;
+    }
+    ret
+}
+
+#[inline]
 pub fn thread_state_ptr_set_blockingObject(thread_state_ptr: &mut thread_state_t, v64: u64) {
     thread_state_ptr.words[0] &= !0xfffffffffff0u64;
     thread_state_ptr.words[0] |= v64 & 0xfffffffffff0u64;
@@ -441,15 +450,30 @@ pub fn thread_state_ptr_set_tcbQueued(thread_state_ptr: &mut thread_state_t, v64
 }
 
 #[inline]
+pub fn thread_state_ptr_get_blockingIPCBadge(thread_state_ptr:&thread_state_t)->u64{
+    thread_state_ptr.words[2] & 0xffffffffffffffffu64
+}
+
+#[inline]
 pub fn thread_state_ptr_set_blockingIPCBadge(thread_state_ptr: &mut thread_state_t, v64: u64) {
     thread_state_ptr.words[2] &= !0xffffffffffffffffu64;
     thread_state_ptr.words[2] |= v64 & 0xffffffffffffffff;
 }
 
 #[inline]
+pub fn thread_state_ptr_get_blockingIPCCanGrant(thread_state_ptr:&thread_state_t)->u64{
+    (thread_state_ptr.words[1] & 0x8u64) >>3
+}
+
+#[inline]
 pub fn thread_state_ptr_set_blockingIPCCanGrant(thread_state_ptr: &mut thread_state_t, v64: u64) {
     thread_state_ptr.words[1] &= !0x8u64;
     thread_state_ptr.words[1] |= (v64 << 3) & 0x8;
+}
+
+#[inline]
+pub fn thread_state_ptr_get_blockingIPCIsCall(thread_state_ptr:&thread_state_t)->u64{
+    (thread_state_ptr.words[1] & 0x4u64) >> 2
 }
 
 #[inline]

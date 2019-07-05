@@ -16,14 +16,7 @@ use crate::structures::*;
 use crate::thread::possibleSwitchTo;
 use crate::thread::*;
 use crate::types::*;
-
-extern "C" {
-    //fn tcbSchedEnqueue(tcb:*mut tcb_t);
-    fn cancelIPC(tptr: *mut tcb_t);
-//fn possibleSwitchTo(tptr: *mut tcb_t);
-//fn tcbEPDequeue(tcb: *mut tcb_t, queue: tcb_queue_t) -> tcb_queue_t;
-//fn tcbEPAppend(tcb: *mut tcb_t, queue: tcb_queue_t) -> tcb_queue_t;
-}
+use crate::object::endpoint::cancelIPC;
 
 #[inline]
 pub unsafe fn ntfn_ptr_get_queue(ntfnPtr: *mut notification_t) -> tcb_queue_t {

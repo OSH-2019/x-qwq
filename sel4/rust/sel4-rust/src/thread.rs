@@ -15,6 +15,7 @@ use crate::structures::{
     _thread_state, _thread_state_t, cap_t, cap_tag_t, cte_t, dschedule, tcb_queue_t, tcb_t,
 };
 use crate::types::*;
+use crate::object::endpoint::cancelIPC;
 
 extern "C" {
     static mut current_extra_caps: extra_caps_t;
@@ -37,8 +38,6 @@ extern "C" {
     fn Arch_switchToThread(tcb: *mut tcb_t);
     fn Arch_switchToIdleThread();
     fn Arch_configureIdleThread(tcb: *mut tcb_t);
-    //src/object/endpoint.c
-    fn cancelIPC(tptr: *mut tcb_t);
     //src/arch/x86/machine/hardware.c
     fn getRestartPC(thread: *mut tcb_t) -> word_t;
     fn setNextPC(thread: *mut tcb_t, v: word_t);
