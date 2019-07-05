@@ -5,18 +5,18 @@
 #![allow(unused_imports)]
 #![allow(unused_attributes)]
 
-use crate::types::*;
-use crate::structures::*;
-use crate::thread::*;
-use crate::failures::*;
 use crate::errors::*;
+use crate::failures::*;
+use crate::object::arch_structures::*;
 use crate::object::cap::*;
 use crate::object::cnode::*;
-use crate::object::untyped::*;
+use crate::object::endpoint::sendIPC;
 use crate::object::interrupt::*;
 use crate::object::notification::*;
-use crate::object::arch_structures::*;
-use crate::object::endpoint::sendIPC;
+use crate::object::untyped::*;
+use crate::structures::*;
+use crate::thread::*;
+use crate::types::*;
 
 extern "C" {
     static mut current_syscall_error: syscall_error_t;
@@ -30,12 +30,31 @@ extern "C" {
     fn Arch_prepareThreadDelete(thread: *mut tcb_t);
     fn Arch_updateCapData(preserve: bool_t, newData: u64, cap: cap_t) -> cap_t;
     fn Arch_maskCapRights(cap_rights: seL4_CapRights_t, cap: cap_t) -> cap_t;
-    fn Arch_decodeInvocation(invLabel: u64, length: u64, cpt: u64, slot: *mut cte_t,
-                             cap: cap_t, excaps: extra_caps_t, call: bool_t, buffer: *mut u64) -> u64;
-    fn decodeTCBInvocation(invLabel: u64, length: u64, cap: cap_t,
-                           slot: *mut cte_t, excaps: extra_caps_t, call: bool_t,
-                           buffer: *mut u64) -> u64;
-    fn decodeDomainInvocation(invLabel: u64, length: u64, excaps: extra_caps_t, buffer: *mut u64) -> u64;
+    fn Arch_decodeInvocation(
+        invLabel: u64,
+        length: u64,
+        cpt: u64,
+        slot: *mut cte_t,
+        cap: cap_t,
+        excaps: extra_caps_t,
+        call: bool_t,
+        buffer: *mut u64,
+    ) -> u64;
+    fn decodeTCBInvocation(
+        invLabel: u64,
+        length: u64,
+        cap: cap_t,
+        slot: *mut cte_t,
+        excaps: extra_caps_t,
+        call: bool_t,
+        buffer: *mut u64,
+    ) -> u64;
+    fn decodeDomainInvocation(
+        invLabel: u64,
+        length: u64,
+        excaps: extra_caps_t,
+        buffer: *mut u64,
+    ) -> u64;
     //fn deletedIRQHandler(irq: u8);
     fn Arch_sameRegionAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
     fn Arch_sameObjectAs(cap_a: cap_t, cap_b: cap_t) -> bool_t;
@@ -92,12 +111,9 @@ pub unsafe extern "C" fn deriveCap(slot: *mut cte_t, cap: cap_t) -> deriveCap_re
         return Arch_deriveCap(slot, cap);
     }
     let cap_type = cap_get_capType(cap);
-    if cap_type == cap_tag_t::cap_zombie_cap as u64 {
-        return deriveCap_ret_t {
-            status: 0u64,
-            cap: cap_null_cap_new(),
-        };
-    } else if cap_type == cap_tag_t::cap_irq_control_cap as u64 {
+    if cap_type == cap_tag_t::cap_zombie_cap as u64
+        || cap_type == cap_tag_t::cap_irq_control_cap as u64
+    {
         return deriveCap_ret_t {
             status: 0u64,
             cap: cap_null_cap_new(),
@@ -128,7 +144,11 @@ pub unsafe extern "C" fn deriveCap(slot: *mut cte_t, cap: cap_t) -> deriveCap_re
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn finaliseCap(cap: cap_t, final_: bool_t, exposed: bool_t) -> finaliseCap_ret_t {
+pub unsafe extern "C" fn finaliseCap(
+    cap: cap_t,
+    final_: bool_t,
+    exposed: bool_t,
+) -> finaliseCap_ret_t {
     if isArchCap(cap) != 0u64 {
         return Arch_finaliseCap(cap, final_);
     }
@@ -151,9 +171,10 @@ pub unsafe extern "C" fn finaliseCap(cap: cap_t, final_: bool_t, exposed: bool_t
             remainder: cap_null_cap_new(),
             cleanupInfo: cap_null_cap_new(),
         };
-    } else if cap_type == cap_tag_t::cap_reply_cap as u64 ||
-        cap_type == cap_tag_t::cap_null_cap as u64 ||
-        cap_type == cap_tag_t::cap_domain_cap as u64 {
+    } else if cap_type == cap_tag_t::cap_reply_cap as u64
+        || cap_type == cap_tag_t::cap_null_cap as u64
+        || cap_type == cap_tag_t::cap_domain_cap as u64
+    {
         return finaliseCap_ret_t {
             remainder: cap_null_cap_new(),
             cleanupInfo: cap_null_cap_new(),
@@ -168,7 +189,7 @@ pub unsafe extern "C" fn finaliseCap(cap: cap_t, final_: bool_t, exposed: bool_t
                 remainder: Zombie_new(
                     1u64 << cap_cnode_cap_get_capCNodeRadix(cap),
                     cap_cnode_cap_get_capCNodeRadix(cap),
-                    cap_cnode_cap_get_capCNodePtr(cap)
+                    cap_cnode_cap_get_capCNodePtr(cap),
                 ),
                 cleanupInfo: cap_null_cap_new(),
             };
@@ -187,7 +208,7 @@ pub unsafe extern "C" fn finaliseCap(cap: cap_t, final_: bool_t, exposed: bool_t
                 remainder: Zombie_new(
                     tcb_arch_cnode_index::tcbArchCNodeEntries as u64,
                     ZombieType_ZombieTCB,
-                    cte_ptr as u64
+                    cte_ptr as u64,
                 ),
                 cleanupInfo: cap_null_cap_new(),
             };
@@ -216,16 +237,16 @@ pub unsafe extern "C" fn finaliseCap(cap: cap_t, final_: bool_t, exposed: bool_t
 #[no_mangle]
 pub extern "C" fn hasCancelSendRights(cap: cap_t) -> bool_t {
     if cap_get_capType(cap) == cap_tag_t::cap_endpoint_cap as u64 {
-        return (cap_endpoint_cap_get_capCanSend(cap) != 0u64 &&
-            cap_endpoint_cap_get_capCanReceive(cap) != 0u64 &&
-            cap_endpoint_cap_get_capCanGrant(cap) != 0u64) as u64;
+        return (cap_endpoint_cap_get_capCanSend(cap) != 0u64
+            && cap_endpoint_cap_get_capCanReceive(cap) != 0u64
+            && cap_endpoint_cap_get_capCanGrant(cap) != 0u64) as u64;
     }
     0u64
 }
 
 macro_rules! MASK {
     ($x:expr) => {
-        (1u64<<($x))-1u64
+        (1u64 << ($x)) - 1u64
     };
 }
 
@@ -242,38 +263,38 @@ pub unsafe extern "C" fn sameRegionAs(cap_a: cap_t, cap_b: cap_t) -> bool_t {
         }
     } else if cap_type == cap_tag_t::cap_endpoint_cap as u64 {
         if cap_get_capType(cap_b) == cap_tag_t::cap_endpoint_cap as u64 {
-            return (cap_endpoint_cap_get_capEPPtr(cap_a) ==
-                cap_endpoint_cap_get_capEPPtr(cap_b)) as u64;
+            return (cap_endpoint_cap_get_capEPPtr(cap_a) == cap_endpoint_cap_get_capEPPtr(cap_b))
+                as u64;
         }
     } else if cap_type == cap_tag_t::cap_notification_cap as u64 {
         if cap_get_capType(cap_b) == cap_tag_t::cap_endpoint_cap as u64 {
-            return (cap_notification_cap_get_capNtfnPtr(cap_a) ==
-                cap_notification_cap_get_capNtfnPtr(cap_b)) as u64;
+            return (cap_notification_cap_get_capNtfnPtr(cap_a)
+                == cap_notification_cap_get_capNtfnPtr(cap_b)) as u64;
         }
     } else if cap_type == cap_tag_t::cap_cnode_cap as u64 {
         if cap_get_capType(cap_b) == cap_tag_t::cap_cnode_cap as u64 {
-            return ((cap_cnode_cap_get_capCNodePtr(cap_a) ==
-                cap_cnode_cap_get_capCNodePtr(cap_b)) &&
-                (cap_cnode_cap_get_capCNodeRadix(cap_a) ==
-                cap_cnode_cap_get_capCNodeRadix(cap_b))) as u64;
+            return ((cap_cnode_cap_get_capCNodePtr(cap_a) == cap_cnode_cap_get_capCNodePtr(cap_b))
+                && (cap_cnode_cap_get_capCNodeRadix(cap_a)
+                    == cap_cnode_cap_get_capCNodeRadix(cap_b))) as u64;
         }
     } else if cap_type == cap_tag_t::cap_thread_cap as u64 {
-        if cap_get_capType(cap_b) == cap_tag_t::cap_thread_cap as u64  {
-            return (cap_thread_cap_get_capTCBPtr(cap_a) ==
-                cap_thread_cap_get_capTCBPtr(cap_b)) as u64;
+        if cap_get_capType(cap_b) == cap_tag_t::cap_thread_cap as u64 {
+            return (cap_thread_cap_get_capTCBPtr(cap_a) == cap_thread_cap_get_capTCBPtr(cap_b))
+                as u64;
         }
     } else if cap_type == cap_tag_t::cap_reply_cap as u64 {
         if cap_get_capType(cap_b) == cap_tag_t::cap_reply_cap as u64 {
-            return (cap_reply_cap_get_capTCBPtr(cap_a) ==
-                cap_reply_cap_get_capTCBPtr(cap_b)) as u64;
+            return (cap_reply_cap_get_capTCBPtr(cap_a) == cap_reply_cap_get_capTCBPtr(cap_b))
+                as u64;
         }
     } else if cap_type == cap_tag_t::cap_domain_cap as u64 {
         if cap_get_capType(cap_b) == cap_tag_t::cap_domain_cap as u64 {
             return 1u64;
         }
     } else if cap_type == cap_tag_t::cap_irq_control_cap as u64 {
-        if cap_get_capType(cap_b) == cap_tag_t::cap_irq_control_cap as u64 ||
-            cap_get_capType(cap_b) == cap_tag_t::cap_irq_handler_cap as u64 {
+        if cap_get_capType(cap_b) == cap_tag_t::cap_irq_control_cap as u64
+            || cap_get_capType(cap_b) == cap_tag_t::cap_irq_handler_cap as u64
+        {
             return 1u64;
         }
     } else if cap_type == cap_tag_t::cap_irq_handler_cap as u64 {
@@ -293,8 +314,9 @@ pub unsafe extern "C" fn sameObjectAs(cap_a: cap_t, cap_b: cap_t) -> bool_t {
     if cap_get_capType(cap_a) == cap_tag_t::cap_untyped_cap as u64 {
         return 0u64;
     }
-    if cap_get_capType(cap_a) == cap_tag_t::cap_irq_control_cap as u64 &&
-        cap_get_capType(cap_b) == cap_tag_t::cap_irq_handler_cap as u64 {
+    if cap_get_capType(cap_a) == cap_tag_t::cap_irq_control_cap as u64
+        && cap_get_capType(cap_b) == cap_tag_t::cap_irq_handler_cap as u64
+    {
         return 0u64;
     }
     if isArchCap(cap_a) != 0u64 && isArchCap(cap_b) != 0u64 {
@@ -322,9 +344,7 @@ pub unsafe extern "C" fn updateCapData(preserve: bool_t, newData: u64, cap: cap_
             return cap_null_cap_new();
         }
     } else if cap_type == cap_tag_t::cap_cnode_cap as u64 {
-        let w = seL4_CNode_CapData_t {
-            words: [newData],
-        };
+        let w = seL4_CNode_CapData_t { words: [newData] };
         let guardSize = seL4_CNode_CapData_get_guardSize(w);
         if guardSize + cap_cnode_cap_get_capCNodeRadix(cap) > wordBits {
             return cap_null_cap_new();
@@ -339,51 +359,63 @@ pub unsafe extern "C" fn updateCapData(preserve: bool_t, newData: u64, cap: cap_
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn
-maskCapRights(cap_rights: seL4_CapRights_t, cap: cap_t) -> cap_t {
+pub unsafe extern "C" fn maskCapRights(cap_rights: seL4_CapRights_t, cap: cap_t) -> cap_t {
     if isArchCap(cap) != 0u64 {
         return Arch_maskCapRights(cap_rights, cap);
     }
     let cap_type = cap_get_capType(cap);
-    if cap_type == cap_tag_t::cap_null_cap as u64 ||
-        cap_type == cap_tag_t::cap_domain_cap as u64 ||
-        cap_type == cap_tag_t::cap_cnode_cap as u64 ||
-        cap_type == cap_tag_t::cap_untyped_cap as u64 ||
-        cap_type == cap_tag_t::cap_reply_cap as u64 ||
-        cap_type == cap_tag_t::cap_irq_control_cap as u64 ||
-        cap_type == cap_tag_t::cap_irq_handler_cap as u64 ||
-        cap_type == cap_tag_t::cap_zombie_cap as u64 ||
-        cap_type == cap_tag_t::cap_thread_cap as u64 {
+    if cap_type == cap_tag_t::cap_null_cap as u64
+        || cap_type == cap_tag_t::cap_domain_cap as u64
+        || cap_type == cap_tag_t::cap_cnode_cap as u64
+        || cap_type == cap_tag_t::cap_untyped_cap as u64
+        || cap_type == cap_tag_t::cap_reply_cap as u64
+        || cap_type == cap_tag_t::cap_irq_control_cap as u64
+        || cap_type == cap_tag_t::cap_irq_handler_cap as u64
+        || cap_type == cap_tag_t::cap_zombie_cap as u64
+        || cap_type == cap_tag_t::cap_thread_cap as u64
+    {
         return cap;
     } else if cap_type == cap_tag_t::cap_endpoint_cap as u64 {
         let mut new_cap = cap_endpoint_cap_set_capCanSend(
-                      cap, cap_endpoint_cap_get_capCanSend(cap) &
-                      seL4_CapRights_get_capAllowWrite(cap_rights));
+            cap,
+            cap_endpoint_cap_get_capCanSend(cap) & seL4_CapRights_get_capAllowWrite(cap_rights),
+        );
         new_cap = cap_endpoint_cap_set_capCanReceive(
-                      new_cap, cap_endpoint_cap_get_capCanReceive(cap) &
-                      seL4_CapRights_get_capAllowRead(cap_rights));
+            new_cap,
+            cap_endpoint_cap_get_capCanReceive(cap) & seL4_CapRights_get_capAllowRead(cap_rights),
+        );
         new_cap = cap_endpoint_cap_set_capCanGrant(
-                      new_cap, cap_endpoint_cap_get_capCanGrant(cap) &
-                      seL4_CapRights_get_capAllowGrant(cap_rights));
+            new_cap,
+            cap_endpoint_cap_get_capCanGrant(cap) & seL4_CapRights_get_capAllowGrant(cap_rights),
+        );
         return new_cap;
     } else if cap_type == cap_tag_t::cap_notification_cap as u64 {
         let mut new_cap = cap_notification_cap_set_capNtfnCanSend(
-                      cap, cap_notification_cap_get_capNtfnCanSend(cap) &
-                      seL4_CapRights_get_capAllowWrite(cap_rights));
-        new_cap = cap_notification_cap_set_capNtfnCanReceive(new_cap,
-                                                             cap_notification_cap_get_capNtfnCanReceive(cap) &
-                                                             seL4_CapRights_get_capAllowRead(cap_rights));
+            cap,
+            cap_notification_cap_get_capNtfnCanSend(cap)
+                & seL4_CapRights_get_capAllowWrite(cap_rights),
+        );
+        new_cap = cap_notification_cap_set_capNtfnCanReceive(
+            new_cap,
+            cap_notification_cap_get_capNtfnCanReceive(cap)
+                & seL4_CapRights_get_capAllowRead(cap_rights),
+        );
         return new_cap;
     }
     panic!("Invalid cap type");
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn
-createNewObjects(t: u64, parent: *mut cte_t, slots: slot_range_t,
-                 regionBase: u64, userSize: u64, deviceMemory: bool_t) {
+pub unsafe extern "C" fn createNewObjects(
+    t: u64,
+    parent: *mut cte_t,
+    slots: slot_range_t,
+    regionBase: u64,
+    userSize: u64,
+    deviceMemory: bool_t,
+) {
     let objectSize = getObjectSize(t, userSize);
-    let totalObjectSize = slots.length << objectSize;
+    let _totalObjectSize = slots.length << objectSize;
     let nextFreeArea = regionBase;
     let mut i: u64 = 0;
     while i < slots.length {
@@ -465,23 +497,28 @@ createNewObjects(t: u64, parent: *mut cte_t, slots: slot_range_t,
 //}
 
 #[no_mangle]
-pub unsafe extern "C" fn
-performInvocation_Endpoint(ep: *mut endpoint_t, badge: u64,
-                           canGrant: bool_t, block: bool_t, call: bool_t) ->u64 {
+pub unsafe extern "C" fn performInvocation_Endpoint(
+    ep: *mut endpoint_t,
+    badge: u64,
+    canGrant: bool_t,
+    block: bool_t,
+    call: bool_t,
+) -> u64 {
     sendIPC(block, call, badge, canGrant, node_state!(ksCurThread), ep);
     0u64
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn
-performInvocation_Notification(ntfn: *mut notification_t, badge: u64) -> u64 {
+pub unsafe extern "C" fn performInvocation_Notification(
+    ntfn: *mut notification_t,
+    badge: u64,
+) -> u64 {
     sendSignal(ntfn, badge);
     0u64
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn
-performInvocation_Reply(thread: *mut tcb_t, slot: *mut cte_t) -> u64 {
+pub unsafe extern "C" fn performInvocation_Reply(thread: *mut tcb_t, slot: *mut cte_t) -> u64 {
     doReplyTransfer(node_state!(ksCurThread), thread, slot);
     0u64
 }

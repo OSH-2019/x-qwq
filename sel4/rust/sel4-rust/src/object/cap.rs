@@ -1,8 +1,8 @@
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
 
-use crate::structures::*;
 use crate::object::arch_structures::*;
+use crate::structures::*;
 
 #[repr(C)]
 #[derive(Copy, Clone)]

@@ -5,24 +5,30 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused_imports)]
 
-use crate::structures::*;
-use crate::types::*;
 use crate::cspace::*;
-use crate::invocation::*;
 use crate::errors::*;
 use crate::failures::*;
-use crate::syscall::*;
-use crate::thread::*;
+use crate::invocation::*;
 use crate::object::arch_structures::*;
 use crate::object::cnode::*;
 use crate::object::objecttype::*;
+use crate::structures::*;
+use crate::syscall::*;
+use crate::thread::*;
+use crate::types::*;
 
 extern "C" {
     static mut current_syscall_error: syscall_error_t;
     static mut current_lookup_fault: lookup_fault_t;
     static mut ksCurThread: *mut tcb_t;
-    fn createNewObjects(t: u64, parent: *mut cte_t, slots: slot_range_t,
-                        regionBase: u64, userSize: u64, deviceMemory: u64);
+    fn createNewObjects(
+        t: u64,
+        parent: *mut cte_t,
+        slots: slot_range_t,
+        regionBase: u64,
+        userSize: u64,
+        deviceMemory: u64,
+    );
     fn Arch_isFrameType(type_: u64) -> bool_t;
     fn memzero(s: u64, n: u64);
     fn preemptionPoint() -> u64;
@@ -63,7 +69,7 @@ const CONFIG_RETYPE_FAN_OUT_LIMIT: u64 = 256;
 
 macro_rules! MASK {
     ($x:expr) => {
-        (1u64<<($x))-1u64
+        (1u64 << ($x)) - 1u64
     };
 }
 
@@ -75,12 +81,16 @@ fn alignUp(baseValue: u64, alignment: u64) -> u64 {
 pub const seL4_MinUntypedBits: u64 = 4;
 pub const seL4_MaxUntypedBits: u64 = 47;
 
-
 #[no_mangle]
-pub unsafe extern "C" fn
-decodeUntypedInvocation(invLabel: u64, length: u64, slot: *mut cte_t,
-                        cap: cap_t, excaps: extra_caps_t,
-                        call: bool_t, buffer: *mut u64) -> u64 {
+pub unsafe extern "C" fn decodeUntypedInvocation(
+    invLabel: u64,
+    length: u64,
+    slot: *mut cte_t,
+    cap: cap_t,
+    excaps: extra_caps_t,
+    call: bool_t,
+    buffer: *mut u64,
+) -> u64 {
     if invLabel != invocation_label::UntypedRetype as u64 {
         userError!("Untyped cap: Illegal operation attempted.");
         current_syscall_error.type_ = seL4_Error::seL4_IllegalOperation as u64;
@@ -145,14 +155,20 @@ decodeUntypedInvocation(invLabel: u64, length: u64, slot: *mut cte_t,
     }
     let nodeSize = 1u64 << cap_cnode_cap_get_capCNodeRadix(nodeCap);
     if nodeOffset > nodeSize - 1 {
-        userError!("Untyped Retype: Destination node offset #%d too large.", nodeOffset as i32);
+        userError!(
+            "Untyped Retype: Destination node offset #%d too large.",
+            nodeOffset as i32
+        );
         current_syscall_error.type_ = seL4_Error::seL4_RangeError as u64;
         current_syscall_error.rangeErrorMin = 0;
         current_syscall_error.rangeErrorMax = nodeSize - 1;
         return exception::EXCEPTION_SYSCALL_ERROR as u64;
     }
     if nodeWindow < 1 || nodeWindow > CONFIG_RETYPE_FAN_OUT_LIMIT {
-        userError!("Untyped Retype: Number of requested objects (%d) too small or large.", nodeWindow as i32);
+        userError!(
+            "Untyped Retype: Number of requested objects (%d) too small or large.",
+            nodeWindow as i32
+        );
         current_syscall_error.type_ = seL4_Error::seL4_RangeError as u64;
         current_syscall_error.rangeErrorMin = 1;
         current_syscall_error.rangeErrorMax = CONFIG_RETYPE_FAN_OUT_LIMIT;
@@ -174,7 +190,10 @@ decodeUntypedInvocation(invLabel: u64, length: u64, slot: *mut cte_t,
     while i < nodeOffset + nodeWindow {
         let status = ensureEmptySlot(slots.cnode.offset(i as isize));
         if status != 0u64 {
-            userError!("Untyped Retype: Slot #%d in destination window non-empty", i as i32);
+            userError!(
+                "Untyped Retype: Slot #%d in destination window non-empty",
+                i as i32
+            );
             return status;
         }
         i += 1;
@@ -190,7 +209,8 @@ decodeUntypedInvocation(invLabel: u64, length: u64, slot: *mut cte_t,
         reset = true;
     }
     let freeRef = get_free_ref(cap_untyped_cap_get_capPtr(cap), freeIndex);
-    let untypedFreeBytes: u64 = (1u64 << cap_untyped_cap_get_capBlockSize(cap)) - free_index_to_offset(freeIndex);
+    let untypedFreeBytes: u64 =
+        (1u64 << cap_untyped_cap_get_capBlockSize(cap)) - free_index_to_offset(freeIndex);
     if (untypedFreeBytes >> objectSize) < nodeWindow {
         //ignore userError
         current_syscall_error.type_ = seL4_Error::seL4_NotEnoughMemory as u64;
@@ -198,15 +218,29 @@ decodeUntypedInvocation(invLabel: u64, length: u64, slot: *mut cte_t,
         return exception::EXCEPTION_SYSCALL_ERROR as u64;
     }
     let deviceMemory = cap_untyped_cap_get_capIsDevice(cap);
-    if deviceMemory != 0u64 && Arch_isFrameType(newType) == 0u64 && newType != seL4_ObjectType::seL4_UntypedObject as u64 {
+    if deviceMemory != 0u64
+        && Arch_isFrameType(newType) == 0u64
+        && newType != seL4_ObjectType::seL4_UntypedObject as u64
+    {
         userError!("Untyped Retype: Creating kernel objects with device untyped");
         current_syscall_error.type_ = seL4_Error::seL4_InvalidArgument as u64;
         current_syscall_error.invalidArgumentNumber = 1;
         return exception::EXCEPTION_SYSCALL_ERROR as u64;
     }
     let alignedFreeRef = alignUp(freeRef, objectSize);
-    setThreadState(node_state!(ksCurThread), _thread_state::ThreadState_Restart as u64);
-    invokeUntyped_Retype(slot, reset as u64, alignedFreeRef, newType, userObjSize, slots, deviceMemory)
+    setThreadState(
+        node_state!(ksCurThread),
+        _thread_state::ThreadState_Restart as u64,
+    );
+    invokeUntyped_Retype(
+        slot,
+        reset as u64,
+        alignedFreeRef,
+        newType,
+        userObjSize,
+        slots,
+        deviceMemory,
+    )
 }
 
 unsafe fn resetUntypedCap(srcSlot: *mut cte_t) -> u64 {
@@ -226,9 +260,10 @@ unsafe fn resetUntypedCap(srcSlot: *mut cte_t) -> u64 {
         (*srcSlot).cap = cap_untyped_cap_set_capFreeIndex(prev_cap, 0);
     } else {
         let mut x: i64 = (((offset - 1) >> chunk) << chunk) as i64;
-        while x != - (1 << chunk) {
+        while x != -(1 << chunk) {
             clearMemory(get_offset_free_ptr(regionBase, x as u64), chunk as u32);
-            (*srcSlot).cap = cap_untyped_cap_set_capFreeIndex(prev_cap, offset_to_free_index(x as u64));
+            (*srcSlot).cap =
+                cap_untyped_cap_set_capFreeIndex(prev_cap, offset_to_free_index(x as u64));
             let status = preemptionPoint();
             if status != 0 {
                 return status;
@@ -240,11 +275,15 @@ unsafe fn resetUntypedCap(srcSlot: *mut cte_t) -> u64 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn
-invokeUntyped_Retype(srcSlot: *mut cte_t,
-                     reset: u64, retypeBase: u64,
-                     newType: u64, userSize: u64,
-                     destSlots: slot_range_t, deviceMemory: u64) -> u64 {
+pub unsafe extern "C" fn invokeUntyped_Retype(
+    srcSlot: *mut cte_t,
+    reset: u64,
+    retypeBase: u64,
+    newType: u64,
+    userSize: u64,
+    destSlots: slot_range_t,
+    deviceMemory: u64,
+) -> u64 {
     let regionBase = cap_untyped_cap_get_capPtr((*srcSlot).cap);
     let mut freeRef = get_free_ref(regionBase, cap_untyped_cap_get_capFreeIndex((*srcSlot).cap));
     if reset == 1 {
@@ -255,8 +294,15 @@ invokeUntyped_Retype(srcSlot: *mut cte_t,
     }
     let totalObjectSize = destSlots.length << getObjectSize(newType, userSize);
     freeRef = retypeBase + totalObjectSize;
-    (*srcSlot).cap = cap_untyped_cap_set_capFreeIndex((*srcSlot).cap, get_free_index(regionBase, freeRef));
-    createNewObjects(newType, srcSlot, destSlots, retypeBase, userSize,
-                     deviceMemory);
+    (*srcSlot).cap =
+        cap_untyped_cap_set_capFreeIndex((*srcSlot).cap, get_free_index(regionBase, freeRef));
+    createNewObjects(
+        newType,
+        srcSlot,
+        destSlots,
+        retypeBase,
+        userSize,
+        deviceMemory,
+    );
     0
 }

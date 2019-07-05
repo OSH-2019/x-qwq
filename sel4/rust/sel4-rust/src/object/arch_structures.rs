@@ -3,29 +3,29 @@
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 
+use crate::structures::cap_t;
+use crate::structures::cap_tag_t;
+use crate::structures::lookup_fault_t;
+use crate::structures::mdb_node_t;
+use crate::structures::notification_t;
+use crate::structures::tcb_cnode_index;
+use crate::structures::thread_state_t;
 use crate::types;
 use crate::types::bool_t;
 use crate::types::word_t;
-use crate::structures::tcb_cnode_index;
-use crate::structures::notification_t;
-use crate::structures::cap_t;
-use crate::structures::cap_tag_t;
-use crate::structures::thread_state_t;
-use crate::structures::lookup_fault_t;
-use crate::structures::mdb_node_t;
 
 //generated/arch/object/structures_gen.h
 #[repr(C)]
-pub struct pde{
-    words:[u64;1]
+pub struct pde {
+    words: [u64; 1],
 }
-pub type pde_t=pde;
+pub type pde_t = pde;
 
 #[repr(C)]
-pub struct pte{
-    words:[u64;1]
+pub struct pte {
+    words: [u64; 1],
 }
-pub type pte_t=pte;
+pub type pte_t = pte;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -49,60 +49,65 @@ pub fn x86_irq_state_irq_ioapic_get_pin(x86_irq_state: x86_irq_state_t) -> u32 {
 }
 
 #[inline]
-pub fn x86_irq_state_irq_ioapic_set_masked(mut x86_irq_state: x86_irq_state_t, v32: u32) -> x86_irq_state_t {
+pub fn x86_irq_state_irq_ioapic_set_masked(
+    mut x86_irq_state: x86_irq_state_t,
+    v32: u32,
+) -> x86_irq_state_t {
     x86_irq_state.words[1] &= !0x8000u32;
     x86_irq_state.words[1] |= (v32 << 15) & 0x8000u32;
     x86_irq_state
 }
 
-const cap_zombie_cap:u64=18;
+const cap_zombie_cap: u64 = 18;
 #[inline]
-pub fn cap_zombie_cap_new(capZombieID:u64, capZombieType:u64)->cap_t{
-    cap_t{
-        words:[0|(cap_zombie_cap&31u64)<<59|(capZombieType&127u64)<<0,
-        0|capZombieID<<0]
+pub fn cap_zombie_cap_new(capZombieID: u64, capZombieType: u64) -> cap_t {
+    cap_t {
+        words: [
+            0 | (cap_zombie_cap & 31u64) << 59 | (capZombieType & 127u64) << 0,
+            0 | capZombieID << 0,
+        ],
     }
 }
 
 #[inline]
-pub fn cap_zombie_cap_get_capZombieType(cap:cap_t)->u64{
-    cap.words[0]&127u64
+pub fn cap_zombie_cap_get_capZombieType(cap: cap_t) -> u64 {
+    cap.words[0] & 127u64
 }
 
 #[inline]
-pub fn cap_zombie_cap_get_capZombieID(cap:cap_t)->u64{
-    cap.words[1]&0xffffffffffffffffu64
+pub fn cap_zombie_cap_get_capZombieID(cap: cap_t) -> u64 {
+    cap.words[1] & 0xffffffffffffffffu64
 }
 
 #[inline]
-pub fn cap_zombie_cap_set_capZombieID(mut cap:cap_t,v64:u64)->cap_t{
-    cap.words[1] &= ! 0xffffffffffffffffu64;
+pub fn cap_zombie_cap_set_capZombieID(mut cap: cap_t, v64: u64) -> cap_t {
+    cap.words[1] &= !0xffffffffffffffffu64;
     cap.words[1] |= v64 & 0xffffffffffffffffu64;
     cap
 }
 
 #[inline]
-pub fn cap_frame_cap_get_capFSize(cap:cap_t)->u64{
-    (cap.words[0]>>59) & 0x1fu64
+pub fn cap_frame_cap_get_capFSize(cap: cap_t) -> u64 {
+    (cap.words[0] >> 59) & 0x1fu64
 }
 
 #[inline]
-pub fn cap_get_capType(cap:cap_t)->u64{
-    (cap.words[0]>>59) & 0x1fu64
+pub fn cap_get_capType(cap: cap_t) -> u64 {
+    (cap.words[0] >> 59) & 0x1fu64
 }
 
 #[inline]
 pub fn cap_get_archCapPtr(cap: cap_t) -> u64 {
     let ctag = cap_get_capType(cap);
-    if ctag == cap_tag_t::cap_frame_cap as u64{
+    if ctag == cap_tag_t::cap_frame_cap as u64 {
         return cap_frame_cap_get_capFBasePtr(cap);
     } else if ctag == cap_tag_t::cap_page_table_cap as u64 {
         return cap_page_table_cap_get_capPTBasePtr(cap);
     } else if ctag == cap_tag_t::cap_page_directory_cap as u64 {
         return cap_page_directory_cap_get_capPDBasePtr(cap);
-    } else if ctag == cap_tag_t::cap_io_port_cap as u64 {
-        return 0u64;
-    } else if ctag == cap_tag_t::cap_asid_control_cap as u64 {
+    } else if ctag == cap_tag_t::cap_io_port_cap as u64
+        || ctag == cap_tag_t::cap_asid_control_cap as u64
+    {
         return 0u64;
     } else if ctag == cap_tag_t::cap_asid_pool_cap as u64 {
         return cap_asid_pool_cap_get_capASIDPool(cap);
@@ -172,22 +177,22 @@ pub fn cap_pdpt_cap_get_capPDPTBasePtr(cap: cap_t) -> u64 {
 }
 
 #[inline]
-pub fn cap_endpoint_cap_get_capEPPtr(cap:cap_t)->u64{
-    let mut ret:u64=cap.words[0] & 0xffffffffffffu64;
-    if (ret & (1u64 << 47))!=0 {
+pub fn cap_endpoint_cap_get_capEPPtr(cap: cap_t) -> u64 {
+    let mut ret: u64 = cap.words[0] & 0xffffffffffffu64;
+    if (ret & (1u64 << 47)) != 0 {
         ret |= 0xffff000000000000;
     }
     ret
 }
 
 #[inline]
-pub fn isArchCap(cap:cap_t)->word_t{
+pub fn isArchCap(cap: cap_t) -> word_t {
     cap_get_capType(cap) % 2
 }
 
 #[inline]
-pub fn cap_cnode_cap_get_capCNodeRadix(cap:cap_t)->u64{
-    (cap.words[0] & 0x1f800000000000u64)>>47
+pub fn cap_cnode_cap_get_capCNodeRadix(cap: cap_t) -> u64 {
+    (cap.words[0] & 0x1f800000000000u64) >> 47
 }
 
 #[inline]
@@ -215,7 +220,7 @@ pub fn cap_cnode_cap_set_capCNodeGuardSize(mut cap: cap_t, v64: u64) -> cap_t {
 }
 
 #[inline]
-pub fn cap_endpoint_cap_get_capEPBadge(cap:cap_t)->u64{
+pub fn cap_endpoint_cap_get_capEPBadge(cap: cap_t) -> u64 {
     cap.words[1] & 0xffffffffffffffffu64
 }
 
@@ -248,7 +253,7 @@ pub fn cap_endpoint_cap_set_capCanGrant(mut cap: cap_t, v64: u64) -> cap_t {
 }
 
 #[inline]
-pub fn cap_notification_cap_get_capNtfnBadge(cap:cap_t)->u64{
+pub fn cap_notification_cap_get_capNtfnBadge(cap: cap_t) -> u64 {
     cap.words[1] & 0xffffffffffffffffu64
 }
 
@@ -328,7 +333,10 @@ pub fn cap_reply_cap_get_capReplyMaster(cap: cap_t) -> u64 {
 #[inline]
 pub fn cap_reply_cap_new(capReplyMaster: u64, capTCBPtr: u64) -> cap_t {
     cap_t {
-        words: [(capReplyMaster & 0x1u64) | (((cap_tag_t::cap_reply_cap as u64) & 0x1fu64) << 59), capTCBPtr],
+        words: [
+            (capReplyMaster & 0x1u64) | (((cap_tag_t::cap_reply_cap as u64) & 0x1fu64) << 59),
+            capTCBPtr,
+        ],
     }
 }
 
@@ -358,8 +366,10 @@ pub fn cap_notification_cap_get_capNtfnPtr(cap: cap_t) -> u64 {
 #[inline]
 pub fn cap_thread_cap_new(capTCBPtr: u64) -> cap_t {
     cap_t {
-        words: [((cap_tag_t::cap_thread_cap as u64 & 0x1fu64) << 59) |
-            (capTCBPtr & 0xffffffffffffu64), 0],
+        words: [
+            ((cap_tag_t::cap_thread_cap as u64 & 0x1fu64) << 59) | (capTCBPtr & 0xffffffffffffu64),
+            0,
+        ],
     }
 }
 
@@ -395,23 +405,26 @@ pub fn cap_irq_handler_cap_get_capIRQ(cap: cap_t) -> u64 {
 #[inline]
 pub fn cap_irq_handler_cap_new(capIRQ: u64) -> cap_t {
     cap_t {
-        words: [((cap_tag_t::cap_irq_handler_cap as u64) & 0x1fu64) << 59, (capIRQ & 0xffu64)],
+        words: [
+            ((cap_tag_t::cap_irq_handler_cap as u64) & 0x1fu64) << 59,
+            (capIRQ & 0xffu64),
+        ],
     }
 }
 
 #[inline]
-pub fn thread_state_get_tsType(thread_state:&thread_state_t)->u64{
+pub fn thread_state_get_tsType(thread_state: &thread_state_t) -> u64 {
     thread_state.words[0] & 0xfu64
 }
 
 #[inline]
-pub fn thread_state_ptr_set_tsType(thread_state_ptr:&mut thread_state_t,v64:u64){
+pub fn thread_state_ptr_set_tsType(thread_state_ptr: &mut thread_state_t, v64: u64) {
     thread_state_ptr.words[0] &= !0xfu64;
     thread_state_ptr.words[0] |= v64 & 0xfu64;
 }
 
 #[inline]
-pub fn thread_state_ptr_set_blockingObject(thread_state_ptr:&mut thread_state_t, v64: u64) {
+pub fn thread_state_ptr_set_blockingObject(thread_state_ptr: &mut thread_state_t, v64: u64) {
     thread_state_ptr.words[0] &= !0xfffffffffff0u64;
     thread_state_ptr.words[0] |= v64 & 0xfffffffffff0u64;
 }
@@ -422,78 +435,78 @@ pub fn thread_state_get_tcbQueued(thread_state: thread_state_t) -> u64 {
 }
 
 #[inline]
-pub fn thread_state_ptr_set_tcbQueued(thread_state_ptr:&mut thread_state_t, v64: u64) {
+pub fn thread_state_ptr_set_tcbQueued(thread_state_ptr: &mut thread_state_t, v64: u64) {
     thread_state_ptr.words[1] &= !0x1u64;
     thread_state_ptr.words[1] |= v64 & 0x1u64;
 }
 
 #[inline]
-pub fn thread_state_ptr_set_blockingIPCBadge(thread_state_ptr:&mut thread_state_t,v64:u64){
+pub fn thread_state_ptr_set_blockingIPCBadge(thread_state_ptr: &mut thread_state_t, v64: u64) {
     thread_state_ptr.words[2] &= !0xffffffffffffffffu64;
     thread_state_ptr.words[2] |= v64 & 0xffffffffffffffff;
 }
 
 #[inline]
-pub fn thread_state_ptr_set_blockingIPCCanGrant(thread_state_ptr:&mut thread_state_t,v64:u64){
+pub fn thread_state_ptr_set_blockingIPCCanGrant(thread_state_ptr: &mut thread_state_t, v64: u64) {
     thread_state_ptr.words[1] &= !0x8u64;
-    thread_state_ptr.words[1] |= (v64<<3)&0x8;
+    thread_state_ptr.words[1] |= (v64 << 3) & 0x8;
 }
 
 #[inline]
-pub fn thread_state_ptr_set_blockingIPCIsCall(thread_state_ptr:&mut thread_state_t,v64:u64){
+pub fn thread_state_ptr_set_blockingIPCIsCall(thread_state_ptr: &mut thread_state_t, v64: u64) {
     thread_state_ptr.words[1] &= !0x4u64;
-    thread_state_ptr.words[1] |= (v64<<2)&0x4;
+    thread_state_ptr.words[1] |= (v64 << 2) & 0x4;
 }
 
 #[inline]
-pub fn endpoint_ptr_set_state(endpoint_ptr:&mut endpoint_t,v64:u64){
+pub fn endpoint_ptr_set_state(endpoint_ptr: &mut endpoint_t, v64: u64) {
     endpoint_ptr.words[0] &= !0x3u64;
     endpoint_ptr.words[0] |= v64 & 0x3;
 }
 
 #[repr(C)]
-pub struct endpoint{
-    words:[u64;2]
+pub struct endpoint {
+    words: [u64; 2],
 }
-pub type endpoint_t=endpoint;
+pub type endpoint_t = endpoint;
 
 #[inline]
-pub fn endpoint_ptr_get_epQueue_head(endpoint_ptr:&endpoint_t)->u64{
+pub fn endpoint_ptr_get_epQueue_head(endpoint_ptr: &endpoint_t) -> u64 {
     endpoint_ptr.words[1] & 0xffffffffffffffffu64
 }
 
 #[inline]
-pub fn endpoint_ptr_get_epQueue_tail(endpoint_ptr:&endpoint_t)->u64{
-    let mut ret:u64;
-    ret=endpoint_ptr.words[0] & 0xfffffffffffcu64;
-    if (ret & (1u64<<47))!=0 {
+pub fn endpoint_ptr_get_epQueue_tail(endpoint_ptr: &endpoint_t) -> u64 {
+    let mut ret: u64;
+    ret = endpoint_ptr.words[0] & 0xfffffffffffcu64;
+    if (ret & (1u64 << 47)) != 0 {
         ret |= 0xffff000000000000;
     }
     ret
 }
 
 #[inline]
-pub fn endpoint_ptr_set_epQueue_head(endpoint_ptr:&mut endpoint_t,v64:u64){
+pub fn endpoint_ptr_set_epQueue_head(endpoint_ptr: &mut endpoint_t, v64: u64) {
     endpoint_ptr.words[1] &= !0xffffffffffffffffu64;
     endpoint_ptr.words[1] |= v64 & 0xffffffffffffffff;
 }
 
 #[inline]
-pub fn endpoint_ptr_set_epQueue_tail(endpoint_ptr:&mut endpoint_t,v64:u64){
+pub fn endpoint_ptr_set_epQueue_tail(endpoint_ptr: &mut endpoint_t, v64: u64) {
     endpoint_ptr.words[0] &= !0xfffffffffffcu64;
     endpoint_ptr.words[0] |= v64 & 0xfffffffffffc;
 }
 
 #[inline]
-pub fn endpoint_ptr_get_state(endpoint_ptr:&endpoint_t)->u64{
+pub fn endpoint_ptr_get_state(endpoint_ptr: &endpoint_t) -> u64 {
     endpoint_ptr.words[0] & 0x3u64
 }
 
 #[repr(C)]
-pub struct seL4_Fault{
-    words:[u64;2]
+pub struct seL4_Fault {
+    words: [u64; 2],
 }
-pub type seL4_Fault_t=seL4_Fault;
+pub type seL4_Fault_t = seL4_Fault;
 
 pub enum seL4_Fault_tag_t {
     seL4_Fault_NullFault = 0,
@@ -504,43 +517,44 @@ pub enum seL4_Fault_tag_t {
 }
 
 #[inline]
-pub fn seL4_Fault_get_seL4_FaultType(seL4_Fault:&seL4_Fault_t)->u64{
-    seL4_Fault.words[0]&0x7u64
+pub fn seL4_Fault_get_seL4_FaultType(seL4_Fault: &seL4_Fault_t) -> u64 {
+    seL4_Fault.words[0] & 0x7u64
 }
 
 #[inline]
-pub fn seL4_Fault_NullFault_new()->seL4_Fault_t{
-    seL4_Fault_t{
-        words:[0,0]
-    }
+pub fn seL4_Fault_NullFault_new() -> seL4_Fault_t {
+    seL4_Fault_t { words: [0, 0] }
 }
 
 #[allow(unused_variables)]
 #[inline]
 pub fn seL4_Fault_CapFault_new(address: u64, inReceivePhase: u64) -> seL4_Fault_t {
     seL4_Fault_t {
-        words: [((inReceivePhase & 0x1u64) << 63) |
-            ((seL4_Fault_tag_t::seL4_Fault_CapFault as u64) & 0x7u64), 0],
+        words: [
+            ((inReceivePhase & 0x1u64) << 63)
+                | ((seL4_Fault_tag_t::seL4_Fault_CapFault as u64) & 0x7u64),
+            0,
+        ],
     }
 }
 
 #[inline]
-pub fn seL4_Fault_ptr_get_seL4_FaultType(seL4_Fault:&seL4_Fault_t)->u64{
+pub fn seL4_Fault_ptr_get_seL4_FaultType(seL4_Fault: &seL4_Fault_t) -> u64 {
     seL4_Fault.words[0] & 0x7u64
 }
 
 //include/arch/x86/arch/machine/registerset.h
-const CONFIG_XSAVE_SIZE:usize=512;
+const CONFIG_XSAVE_SIZE: usize = 512;
 #[repr(C)]
-struct user_fpu_state_t{
-    state: [u8;CONFIG_XSAVE_SIZE]
+struct user_fpu_state_t {
+    state: [u8; CONFIG_XSAVE_SIZE],
 }
 
-const n_contextRegisters:usize=23;
+const n_contextRegisters: usize = 23;
 #[repr(C)]
-pub struct user_context_t{
+pub struct user_context_t {
     fpuState: user_fpu_state_t,
-    pub registers: [word_t;n_contextRegisters]
+    pub registers: [word_t; n_contextRegisters],
 }
 
 //include/arch/x86/arch/machine/hardware.h
@@ -548,116 +562,110 @@ pub struct user_context_t{
 enum vm_page_size {
     X86_SmallPage,
     X86_LargePage,
-    X64_HugePage
+    X64_HugePage,
 }
-type vm_page_size_t=word_t;
+type vm_page_size_t = word_t;
 
-const seL4_PageBits:u64=12;
-const seL4_LargePageBits:u64=21;
-const seL4_HugePageBits:u64=30;
+const seL4_PageBits: u64 = 12;
+const seL4_LargePageBits: u64 = 21;
+const seL4_HugePageBits: u64 = 30;
 
 #[inline]
-fn pageBitsForSize(pagesize:vm_page_size_t)->word_t{
-    match pagesize{
-        pagesize if pagesize==(vm_page_size::X86_SmallPage as u64) =>
-            seL4_PageBits,
-        pagesize if pagesize==(vm_page_size::X86_LargePage as u64) =>
-            seL4_LargePageBits,
-        pagesize if pagesize==(vm_page_size::X64_HugePage as u64) =>
-            seL4_HugePageBits,
-        _ => panic!("Invalid page size") //原来是fail，这里改成panic
+fn pageBitsForSize(pagesize: vm_page_size_t) -> word_t {
+    match pagesize {
+        pagesize if pagesize == (vm_page_size::X86_SmallPage as u64) => seL4_PageBits,
+        pagesize if pagesize == (vm_page_size::X86_LargePage as u64) => seL4_LargePageBits,
+        pagesize if pagesize == (vm_page_size::X64_HugePage as u64) => seL4_HugePageBits,
+        _ => panic!("Invalid page size"), //原来是fail，这里改成panic
     }
 }
 
 //include/arch/x86/arch/64/mode/object/structures.h
-const seL4_PML4Bits:u64=12;
-const seL4_PDPTBits:u64=12;
+const seL4_PML4Bits: u64 = 12;
+const seL4_PDPTBits: u64 = 12;
 
 #[inline]
-fn cap_get_modeCapSizeBits(cap:cap_t)->word_t{
-    let ctag=cap_get_capType(cap);
-    match ctag{
-        ctag if ctag==(cap_tag_t::cap_pml4_cap as u64) =>
-            seL4_PML4Bits,
-        ctag if ctag==(cap_tag_t::cap_pdpt_cap as u64) =>
-            seL4_PDPTBits,
-        _ => 0
+fn cap_get_modeCapSizeBits(cap: cap_t) -> word_t {
+    let ctag = cap_get_capType(cap);
+    match ctag {
+        ctag if ctag == (cap_tag_t::cap_pml4_cap as u64) => seL4_PML4Bits,
+        ctag if ctag == (cap_tag_t::cap_pdpt_cap as u64) => seL4_PDPTBits,
+        _ => 0,
     }
 }
 
 #[inline]
-fn cap_get_modeCapIsPhysical(cap:cap_t)->bool_t{
-    let ctag=cap_get_capType(cap);
-    match ctag{
-        ctag if ctag==(cap_tag_t::cap_pml4_cap as u64) ||
-                ctag==(cap_tag_t::cap_pdpt_cap as u64) =>
-            types::_bool::r#true as u64,
-        _ => types::_bool::r#false as u64
+fn cap_get_modeCapIsPhysical(cap: cap_t) -> bool_t {
+    let ctag = cap_get_capType(cap);
+    match ctag {
+        ctag if ctag == (cap_tag_t::cap_pml4_cap as u64)
+            || ctag == (cap_tag_t::cap_pdpt_cap as u64) =>
+        {
+            types::_bool::r#true as u64
+        }
+        _ => types::_bool::r#false as u64,
     }
 }
-
 
 //include/arch/x86/arch/object/structures.h
 #[repr(C)]
-pub struct arch_tcb_t{
-    pub tcbContext: user_context_t
+pub struct arch_tcb_t {
+    pub tcbContext: user_context_t,
 }
 
 pub enum tcb_arch_cnode_index {
     tcbArchCNodeEntries = tcb_cnode_index::tcbCNodeEntries as isize,
 }
 
-const seL4_PageTableBits:u64=12;
-const seL4_PageDirBits:u64=12;
-const seL4_ASIDPoolBits:u64=12;
+const seL4_PageTableBits: u64 = 12;
+const seL4_PageDirBits: u64 = 12;
+const seL4_ASIDPoolBits: u64 = 12;
 
 #[inline]
-pub fn cap_get_archCapSizeBits(cap:cap_t)->word_t{
-    let ctag=cap_get_capType(cap);
-    match ctag{
-        ctag if ctag==(cap_tag_t::cap_frame_cap as u64) =>
-            pageBitsForSize(cap_frame_cap_get_capFSize(cap)),
-        ctag if ctag==(cap_tag_t::cap_page_table_cap as u64) =>
-            seL4_PageTableBits,
-        ctag if ctag==(cap_tag_t::cap_page_directory_cap as u64) =>
-            seL4_PageDirBits,
-        ctag if ctag==(cap_tag_t::cap_io_port_cap as u64) =>
-            0,
-        ctag if ctag==(cap_tag_t::cap_asid_control_cap as u64) =>
-            0,
-        ctag if ctag==(cap_tag_t::cap_asid_pool_cap as u64) =>
-            seL4_ASIDPoolBits,
-        _ => cap_get_modeCapSizeBits(cap)
+pub fn cap_get_archCapSizeBits(cap: cap_t) -> word_t {
+    let ctag = cap_get_capType(cap);
+    match ctag {
+        ctag if ctag == (cap_tag_t::cap_frame_cap as u64) => {
+            pageBitsForSize(cap_frame_cap_get_capFSize(cap))
+        }
+        ctag if ctag == (cap_tag_t::cap_page_table_cap as u64) => seL4_PageTableBits,
+        ctag if ctag == (cap_tag_t::cap_page_directory_cap as u64) => seL4_PageDirBits,
+        ctag if ctag == (cap_tag_t::cap_io_port_cap as u64) => 0,
+        ctag if ctag == (cap_tag_t::cap_asid_control_cap as u64) => 0,
+        ctag if ctag == (cap_tag_t::cap_asid_pool_cap as u64) => seL4_ASIDPoolBits,
+        _ => cap_get_modeCapSizeBits(cap),
     }
 }
 
 #[inline]
-pub fn cap_get_archCapIsPhysical(cap:cap_t)->bool_t{
-    let ctag=cap_get_capType(cap);
-    match ctag{
-        ctag if ctag==(cap_tag_t::cap_frame_cap as u64) ||
-                ctag==(cap_tag_t::cap_page_table_cap as u64) ||
-                ctag==(cap_tag_t::cap_page_directory_cap as u64) ||
-                ctag==(cap_tag_t::cap_asid_pool_cap as u64) =>
-            types::_bool::r#true as u64,
-        ctag if ctag==(cap_tag_t::cap_io_port_cap as u64) ||
-                ctag==(cap_tag_t::cap_asid_control_cap as u64) =>
-            types::_bool::r#false as u64,
-        _ => cap_get_modeCapIsPhysical(cap)
+pub fn cap_get_archCapIsPhysical(cap: cap_t) -> bool_t {
+    let ctag = cap_get_capType(cap);
+    match ctag {
+        ctag if ctag == (cap_tag_t::cap_frame_cap as u64)
+            || ctag == (cap_tag_t::cap_page_table_cap as u64)
+            || ctag == (cap_tag_t::cap_page_directory_cap as u64)
+            || ctag == (cap_tag_t::cap_asid_pool_cap as u64) =>
+        {
+            types::_bool::r#true as u64
+        }
+        ctag if ctag == (cap_tag_t::cap_io_port_cap as u64)
+            || ctag == (cap_tag_t::cap_asid_control_cap as u64) =>
+        {
+            types::_bool::r#false as u64
+        }
+        _ => cap_get_modeCapIsPhysical(cap),
     }
 }
 
 #[inline]
 pub fn cap_null_cap_new() -> cap_t {
-    cap_t {
-        words: [0; 2],
-    }
+    cap_t { words: [0; 2] }
 }
 
 #[inline]
-pub fn Arch_isCapRevocable(derivedCap:cap_t,srcCap:cap_t)->bool_t{
+pub fn Arch_isCapRevocable(derivedCap: cap_t, srcCap: cap_t) -> bool_t {
     if cap_get_capType(derivedCap) == cap_tag_t::cap_io_port_cap as u64 {
-        ( cap_get_capType(srcCap) == cap_tag_t::cap_io_port_control_cap as u64 ) as u64
+        (cap_get_capType(srcCap) == cap_tag_t::cap_io_port_control_cap as u64) as u64
     } else {
         types::_bool::r#false as u64
     }
@@ -727,9 +735,19 @@ pub fn mdb_node_ptr_set_mdbFirstBadged(mdb_node_ptr: &mut mdb_node_t, v64: u64) 
 }
 
 #[inline]
-pub fn mdb_node_new(mdbNext: u64, mdbRevocable: u64, mdbFirstBadged: u64, mdbPrev: u64) ->mdb_node_t {
+pub fn mdb_node_new(
+    mdbNext: u64,
+    mdbRevocable: u64,
+    mdbFirstBadged: u64,
+    mdbPrev: u64,
+) -> mdb_node_t {
     mdb_node_t {
-        words: [mdbPrev, (mdbNext & 0xfffffffffffcu64) | ((mdbRevocable & 0x1u64) << 1) | (mdbFirstBadged & 0x1u64)]
+        words: [
+            mdbPrev,
+            (mdbNext & 0xfffffffffffcu64)
+                | ((mdbRevocable & 0x1u64) << 1)
+                | (mdbFirstBadged & 0x1u64),
+        ],
     }
 }
 
@@ -748,9 +766,7 @@ pub enum lookup_fault_tag_t {
 
 #[inline]
 pub fn lookup_fault_invalid_root_new() -> lookup_fault_t {
-    lookup_fault_t {
-        words: [0; 2],
-    }
+    lookup_fault_t { words: [0; 2] }
 }
 
 #[inline]
@@ -761,9 +777,12 @@ pub fn lookup_fault_get_lufType(lookup_fault: lookup_fault_t) -> u64 {
 #[inline]
 pub fn lookup_fault_depth_mismatch_new(bitsFound: u64, bitsLeft: u64) -> lookup_fault_t {
     lookup_fault_t {
-        words: [((bitsFound & 0x7fu64) << 9) |
-            ((bitsLeft & 0x7fu64) << 2) |
-            (lookup_fault_tag_t::lookup_fault_depth_mismatch as u64 & 0x3u64), 0u64],
+        words: [
+            ((bitsFound & 0x7fu64) << 9)
+                | ((bitsLeft & 0x7fu64) << 2)
+                | (lookup_fault_tag_t::lookup_fault_depth_mismatch as u64 & 0x3u64),
+            0u64,
+        ],
     }
 }
 
@@ -783,11 +802,18 @@ pub fn lookup_fault_missing_capability_get_bitsLeft(lookup_fault: lookup_fault_t
 }
 
 #[inline]
-pub fn lookup_fault_guard_mismatch_new(guardFound: u64, bitsLeft: u64, bitsFound: u64) -> lookup_fault_t {
+pub fn lookup_fault_guard_mismatch_new(
+    guardFound: u64,
+    bitsLeft: u64,
+    bitsFound: u64,
+) -> lookup_fault_t {
     lookup_fault_t {
-        words: [((bitsLeft & 0x7fu64) << 9) |
-            ((bitsFound & 0x7fu64) << 2) |
-            (lookup_fault_tag_t::lookup_fault_guard_mismatch as u64 & 0x3u64), guardFound],
+        words: [
+            ((bitsLeft & 0x7fu64) << 9)
+                | ((bitsFound & 0x7fu64) << 2)
+                | (lookup_fault_tag_t::lookup_fault_guard_mismatch as u64 & 0x3u64),
+            guardFound,
+        ],
     }
 }
 
@@ -804,13 +830,16 @@ pub fn lookup_fault_guard_mismatch_get_bitsLeft(lookup_fault: lookup_fault_t) ->
 #[inline]
 pub fn lookup_fault_missing_capability_new(bitsLeft: u64) -> lookup_fault_t {
     lookup_fault_t {
-        words: [((bitsLeft & 0x7fu64) << 2) |
-        ((lookup_fault_tag_t::lookup_fault_missing_capability as u64) & 0x3u64), 0],
+        words: [
+            ((bitsLeft & 0x7fu64) << 2)
+                | ((lookup_fault_tag_t::lookup_fault_missing_capability as u64) & 0x3u64),
+            0,
+        ],
     }
 }
 
 #[inline]
-pub fn notification_ptr_get_ntfnQueue_head(notification_ptr: & notification_t) -> u64 {
+pub fn notification_ptr_get_ntfnQueue_head(notification_ptr: &notification_t) -> u64 {
     let mut ret = notification_ptr.words[1] & 0xffffffffffffu64;
     if (ret & (1u64 << 47)) != 0u64 {
         ret |= 0xffff000000000000u64;
@@ -825,7 +854,7 @@ pub fn notification_ptr_set_ntfnQueue_head(notification_ptr: &mut notification_t
 }
 
 #[inline]
-pub fn notification_ptr_get_ntfnQueue_tail(notification_ptr: & notification_t) -> u64 {
+pub fn notification_ptr_get_ntfnQueue_tail(notification_ptr: &notification_t) -> u64 {
     let mut ret = notification_ptr.words[0] & 0xffffffffffff0000u64;
     if (ret & (1u64 << 47)) != 0u64 {
         ret |= 0xffff000000000000u64;
@@ -840,7 +869,7 @@ pub fn notification_ptr_set_ntfnQueue_tail(notification_ptr: &mut notification_t
 }
 
 #[inline]
-pub fn notification_ptr_get_state(notification_ptr: & notification_t) -> u64 {
+pub fn notification_ptr_get_state(notification_ptr: &notification_t) -> u64 {
     notification_ptr.words[0] & 0x3u64
 }
 
@@ -851,7 +880,7 @@ pub fn notification_ptr_set_state(notification_ptr: &mut notification_t, v64: u6
 }
 
 #[inline]
-pub fn notification_ptr_get_ntfnMsgIdentifier(notification_ptr: & notification_t) -> u64 {
+pub fn notification_ptr_get_ntfnMsgIdentifier(notification_ptr: &notification_t) -> u64 {
     notification_ptr.words[2] & 0xffffffffffffffffu64
 }
 
@@ -862,7 +891,7 @@ pub fn notification_ptr_set_ntfnMsgIdentifier(notification_ptr: &mut notificatio
 }
 
 #[inline]
-pub fn notification_ptr_get_ntfnBoundTCB(notification_ptr: & notification_t) -> u64 {
+pub fn notification_ptr_get_ntfnBoundTCB(notification_ptr: &notification_t) -> u64 {
     let mut ret = notification_ptr.words[3] & 0xffffffffffffu64;
     if (ret & (1u64 << 47)) != 0u64 {
         ret |= 0xffff000000000000u64;
@@ -877,14 +906,14 @@ pub fn notification_ptr_set_ntfnBoundTCB(notification_ptr: &mut notification_t, 
 }
 
 #[inline]
-pub fn thread_state_ptr_get_tsType(thread_state_ptr: & thread_state_t) -> u64 {
+pub fn thread_state_ptr_get_tsType(thread_state_ptr: &thread_state_t) -> u64 {
     thread_state_ptr.words[0] & 0xfu64
 }
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct seL4_CNode_CapData_t {
-    pub words: [u64;1],
+    pub words: [u64; 1],
 }
 
 #[inline]

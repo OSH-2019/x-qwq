@@ -4,9 +4,9 @@
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
 
-use crate::types::*;
-use crate::structures::*;
 use crate::registerset::*;
+use crate::structures::*;
+use crate::types::*;
 
 extern "C" {
     static mut ksCurThread: *mut tcb_t;

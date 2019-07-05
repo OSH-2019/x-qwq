@@ -7,11 +7,11 @@
 #![allow(unused_mut)]
 #![allow(unreachable_code)]
 
-use crate::types::*;
-use crate::structures::*;
-use crate::object::arch_structures::*;
-use crate::failures::*;
 use crate::errors::*;
+use crate::failures::*;
+use crate::object::arch_structures::*;
+use crate::structures::*;
+use crate::types::*;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -98,7 +98,12 @@ pub unsafe extern "C" fn lookupSlot(thread: *mut tcb_t, capptr: u64) -> lookupSl
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn lookupSlotForCNodeOp(isSource: bool_t, root: cap_t, capptr: u64, depth: u64) -> lookupSlot_ret_t {
+pub unsafe extern "C" fn lookupSlotForCNodeOp(
+    isSource: bool_t,
+    root: cap_t,
+    capptr: u64,
+    depth: u64,
+) -> lookupSlot_ret_t {
     if cap_get_capType(root) != cap_tag_t::cap_cnode_cap as u64 {
         current_syscall_error.type_ = seL4_Error::seL4_FailedLookup as u64;
         current_syscall_error.failedLookupWasSource = isSource;
@@ -108,7 +113,7 @@ pub unsafe extern "C" fn lookupSlotForCNodeOp(isSource: bool_t, root: cap_t, cap
             slot: 0u64 as *mut cte_t,
         };
     }
-    
+
     if depth < 1 || depth > wordBits {
         current_syscall_error.type_ = seL4_Error::seL4_RangeError as u64;
         current_syscall_error.rangeErrorMin = 1;
@@ -118,7 +123,7 @@ pub unsafe extern "C" fn lookupSlotForCNodeOp(isSource: bool_t, root: cap_t, cap
             slot: 0u64 as *mut cte_t,
         };
     }
-    
+
     let res_ret = resolveAddressBits(root, capptr, depth);
     if res_ret.status != 0u64 {
         current_syscall_error.type_ = seL4_Error::seL4_FailedLookup as u64;
@@ -144,12 +149,20 @@ pub unsafe extern "C" fn lookupSlotForCNodeOp(isSource: bool_t, root: cap_t, cap
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn lookupSourceSlot(root: cap_t, capptr: u64, depth: u64) -> lookupSlot_ret_t {
+pub unsafe extern "C" fn lookupSourceSlot(
+    root: cap_t,
+    capptr: u64,
+    depth: u64,
+) -> lookupSlot_ret_t {
     lookupSlotForCNodeOp(1u64, root, capptr, depth)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn lookupTargetSlot(root: cap_t, capptr: u64, depth: u64) -> lookupSlot_ret_t {
+pub unsafe extern "C" fn lookupTargetSlot(
+    root: cap_t,
+    capptr: u64,
+    depth: u64,
+) -> lookupSlot_ret_t {
     lookupSlotForCNodeOp(0u64, root, capptr, depth)
 }
 
@@ -160,12 +173,16 @@ pub unsafe extern "C" fn lookupPivotSlot(root: cap_t, capptr: u64, depth: u64) -
 
 macro_rules! MASK {
     ($x:expr) => {
-        (1u64<<($x))-1u64
+        (1u64 << ($x)) - 1u64
     };
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn resolveAddressBits(mut nodeCap: cap_t, capptr: u64, mut n_bits: u64) -> resolveAddressBits_ret_t {
+pub unsafe extern "C" fn resolveAddressBits(
+    mut nodeCap: cap_t,
+    capptr: u64,
+    mut n_bits: u64,
+) -> resolveAddressBits_ret_t {
     let mut ret = resolveAddressBits_ret_t {
         status: 0u64,
         slot: 0u64 as *mut cte_t,
@@ -176,7 +193,7 @@ pub unsafe extern "C" fn resolveAddressBits(mut nodeCap: cap_t, capptr: u64, mut
         ret.status = exception::EXCEPTION_LOOKUP_FAULT as u64;
         return ret;
     }
-    
+
     loop {
         let radixBits = cap_cnode_cap_get_capCNodeRadix(nodeCap);
         let guardBits = cap_cnode_cap_get_capCNodeGuardSize(nodeCap);

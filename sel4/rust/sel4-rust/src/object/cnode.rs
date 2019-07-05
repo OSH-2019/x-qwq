@@ -4,19 +4,19 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused_attributes)]
 
-use crate::types::*;
-use crate::structures::*;
-use crate::failures::*;
-use crate::syscall::*;
-use crate::errors::*;
-use crate::thread::*;
-use crate::invocation::*;
-use crate::object::arch_structures::*;
-use crate::object::objecttype::*;
-use crate::object::cap::*;
 use crate::cspace::*;
-use crate::registerset::*;
+use crate::errors::*;
+use crate::failures::*;
+use crate::invocation::*;
 use crate::model::statedata::*;
+use crate::object::arch_structures::*;
+use crate::object::cap::*;
+use crate::object::objecttype::*;
+use crate::registerset::*;
+use crate::structures::*;
+use crate::syscall::*;
+use crate::thread::*;
+use crate::types::*;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -49,10 +49,16 @@ extern "C" {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn
-decodeCNodeInvocation(invLabel: u64, length: u64, cap: cap_t,
-                      excaps: extra_caps_t, buffer: *mut u64) -> u64 {
-    if invLabel < invocation_label::CNodeRevoke as u64 || invLabel > invocation_label::CNodeSaveCaller as u64 {
+pub unsafe extern "C" fn decodeCNodeInvocation(
+    invLabel: u64,
+    length: u64,
+    cap: cap_t,
+    excaps: extra_caps_t,
+    buffer: *mut u64,
+) -> u64 {
+    if invLabel < invocation_label::CNodeRevoke as u64
+        || invLabel > invocation_label::CNodeSaveCaller as u64
+    {
         userError!("CNodeCap: IllegalOperation attemped.");
         current_syscall_error.type_ = seL4_Error::seL4_IllegalOperation as u64;
         return exception::EXCEPTION_SYSCALL_ERROR as u64;
@@ -70,7 +76,9 @@ decodeCNodeInvocation(invLabel: u64, length: u64, cap: cap_t,
         return lu_ret.status;
     }
     let destSlot = lu_ret.slot;
-    if invLabel >= invocation_label::CNodeCopy as u64 && invLabel <= invocation_label::CNodeMutate as u64 {
+    if invLabel >= invocation_label::CNodeCopy as u64
+        && invLabel <= invocation_label::CNodeMutate as u64
+    {
         if length < 4 || excaps.excaprefs[0] as u64 == 0u64 {
             userError!("CNode Copy/Mint/Move/Mutate: Truncated message.");
             current_syscall_error.type_ = seL4_Error::seL4_TruncatedMessage as u64;
@@ -150,8 +158,11 @@ decodeCNodeInvocation(invLabel: u64, length: u64, cap: cap_t,
             current_syscall_error.type_ = seL4_Error::seL4_IllegalOperation as u64;
             return exception::EXCEPTION_SYSCALL_ERROR as u64;
         }
-        
-        setThreadState(node_state!(ksCurThread), _thread_state::ThreadState_Restart as u64);
+
+        setThreadState(
+            node_state!(ksCurThread),
+            _thread_state::ThreadState_Restart as u64,
+        );
         if isMove {
             invokeCNodeMove(newCap, srcSlot, destSlot);
         } else {
@@ -159,10 +170,16 @@ decodeCNodeInvocation(invLabel: u64, length: u64, cap: cap_t,
         }
     }
     if invLabel == invocation_label::CNodeRevoke as u64 {
-        setThreadState(node_state!(ksCurThread), _thread_state::ThreadState_Restart as u64);
+        setThreadState(
+            node_state!(ksCurThread),
+            _thread_state::ThreadState_Restart as u64,
+        );
         return invokeCNodeRevoke(destSlot);
     } else if invLabel == invocation_label::CNodeDelete as u64 {
-        setThreadState(node_state!(ksCurThread), _thread_state::ThreadState_Restart as u64);
+        setThreadState(
+            node_state!(ksCurThread),
+            _thread_state::ThreadState_Restart as u64,
+        );
         return invokeCNodeDelete(destSlot);
     } else if invLabel == invocation_label::CNodeSaveCaller as u64 {
         let status = ensureEmptySlot(destSlot);
@@ -170,7 +187,10 @@ decodeCNodeInvocation(invLabel: u64, length: u64, cap: cap_t,
             userError!("CNode SaveCaller: Destination slot not empty.");
             return status;
         }
-        setThreadState(node_state!(ksCurThread), _thread_state::ThreadState_Restart as u64);
+        setThreadState(
+            node_state!(ksCurThread),
+            _thread_state::ThreadState_Restart as u64,
+        );
         return invokeCNodeSaveCaller(destSlot);
     } else if invLabel == invocation_label::CNodeCancelBadgedSends as u64 {
         let destCap = (*destSlot).cap;
@@ -179,11 +199,13 @@ decodeCNodeInvocation(invLabel: u64, length: u64, cap: cap_t,
             current_syscall_error.type_ = seL4_Error::seL4_IllegalOperation as u64;
             return exception::EXCEPTION_SYSCALL_ERROR as u64;
         }
-        setThreadState(node_state!(ksCurThread), _thread_state::ThreadState_Restart as u64);
+        setThreadState(
+            node_state!(ksCurThread),
+            _thread_state::ThreadState_Restart as u64,
+        );
         return invokeCNodeCancelBadgedSends(destCap);
     } else if invLabel == invocation_label::CNodeRotate as u64 {
-        if length < 8 || excaps.excaprefs[0] as u64 == 0u64
-            || excaps.excaprefs[1] as u64 == 0u64 {
+        if length < 8 || excaps.excaprefs[0] as u64 == 0u64 || excaps.excaprefs[1] as u64 == 0u64 {
             current_syscall_error.type_ = seL4_Error::seL4_TruncatedMessage as u64;
             return exception::EXCEPTION_SYSCALL_ERROR as u64;
         }
@@ -220,13 +242,13 @@ decodeCNodeInvocation(invLabel: u64, length: u64, cap: cap_t,
             current_syscall_error.type_ = seL4_Error::seL4_FailedLookup as u64;
             current_syscall_error.failedLookupWasSource = 1;
             current_lookup_fault = lookup_fault_missing_capability_new(srcDepth);
-            return exception::EXCEPTION_SYSCALL_ERROR as u64
+            return exception::EXCEPTION_SYSCALL_ERROR as u64;
         }
         if cap_get_capType((*pivotSlot).cap) == cap_tag_t::cap_null_cap as u64 {
             current_syscall_error.type_ = seL4_Error::seL4_FailedLookup as u64;
             current_syscall_error.failedLookupWasSource = 1;
             current_lookup_fault = lookup_fault_missing_capability_new(pivotDepth);
-            return exception::EXCEPTION_SYSCALL_ERROR as u64
+            return exception::EXCEPTION_SYSCALL_ERROR as u64;
         }
         let newSrcCap = updateCapData(1u64, srcNewData, (*srcSlot).cap);
         let newPivotCap = updateCapData(1u64, pivotNewData, (*pivotSlot).cap);
@@ -240,7 +262,10 @@ decodeCNodeInvocation(invLabel: u64, length: u64, cap: cap_t,
             current_syscall_error.type_ = seL4_Error::seL4_IllegalOperation as u64;
             return exception::EXCEPTION_SYSCALL_ERROR as u64;
         }
-        setThreadState(node_state!(ksCurThread), _thread_state::ThreadState_Restart as u64);
+        setThreadState(
+            node_state!(ksCurThread),
+            _thread_state::ThreadState_Restart as u64,
+        );
         return invokeCNodeRotate(newSrcCap, newPivotCap, srcSlot, pivotSlot, destSlot);
     }
     0u64
@@ -267,20 +292,33 @@ pub unsafe extern "C" fn invokeCNodeCancelBadgedSends(cap: cap_t) -> u64 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn invokeCNodeInsert(cap: cap_t, srcSlot: *mut cte_t, destSlot: *mut cte_t) -> u64 {
+pub unsafe extern "C" fn invokeCNodeInsert(
+    cap: cap_t,
+    srcSlot: *mut cte_t,
+    destSlot: *mut cte_t,
+) -> u64 {
     cteInsert(cap, srcSlot, destSlot);
     0u64
 }
 
 #[no_mangle]
-pub unsafe extern "C"  fn invokeCNodeMove(cap: cap_t, srcSlot: *mut cte_t, destSlot: *mut cte_t) -> u64 {
+pub unsafe extern "C" fn invokeCNodeMove(
+    cap: cap_t,
+    srcSlot: *mut cte_t,
+    destSlot: *mut cte_t,
+) -> u64 {
     cteMove(cap, srcSlot, destSlot);
     0u64
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn invokeCNodeRotate(cap1: cap_t, cap2: cap_t, slot1: *mut cte_t,
-                                           slot2: *mut cte_t, slot3: *mut cte_t) -> u64 {
+pub unsafe extern "C" fn invokeCNodeRotate(
+    cap1: cap_t,
+    cap2: cap_t,
+    slot1: *mut cte_t,
+    slot2: *mut cte_t,
+    slot3: *mut cte_t,
+) -> u64 {
     if slot1 == slot3 {
         cteSwap(cap1, slot1, cap2, slot2);
     } else {
@@ -296,7 +334,7 @@ pub unsafe extern "C" fn invokeCNodeSaveCaller(destSlot: *mut cte_t) -> u64 {
     let cap = (*srcSlot).cap;
     let cap_type = cap_get_capType(cap);
     if cap_type == cap_tag_t::cap_null_cap as u64 {
-            //userError!("CNode SaveCaller: Reply cap not present.")
+        //userError!("CNode SaveCaller: Reply cap not present.")
     } else if cap_type == cap_tag_t::cap_reply_cap as u64 {
         if cap_reply_cap_get_capReplyMaster(cap) == 0u64 {
             cteMove(cap, srcSlot, destSlot);
@@ -308,11 +346,16 @@ pub unsafe extern "C" fn invokeCNodeSaveCaller(destSlot: *mut cte_t) -> u64 {
 }
 
 unsafe fn setUntypedCapAsFull(srcCap: cap_t, newCap: cap_t, srcSlot: *mut cte_t) {
-    if cap_get_capType(srcCap) == cap_tag_t::cap_untyped_cap as u64 &&
-        cap_get_capType(newCap) == cap_tag_t::cap_untyped_cap as u64 {
-        if cap_untyped_cap_get_capPtr(srcCap) == cap_untyped_cap_get_capPtr(newCap) &&
-            cap_untyped_cap_get_capBlockSize(newCap) == cap_untyped_cap_get_capBlockSize(srcCap) {
-                cap_untyped_cap_ptr_set_capFreeIndex(&mut (*srcSlot).cap, (1 << cap_untyped_cap_get_capBlockSize(srcCap)) - 4);
+    if cap_get_capType(srcCap) == cap_tag_t::cap_untyped_cap as u64
+        && cap_get_capType(newCap) == cap_tag_t::cap_untyped_cap as u64
+    {
+        if cap_untyped_cap_get_capPtr(srcCap) == cap_untyped_cap_get_capPtr(newCap)
+            && cap_untyped_cap_get_capBlockSize(newCap) == cap_untyped_cap_get_capBlockSize(srcCap)
+        {
+            cap_untyped_cap_ptr_set_capFreeIndex(
+                &mut (*srcSlot).cap,
+                (1 << cap_untyped_cap_get_capBlockSize(srcCap)) - 4,
+            );
         }
     }
 }
@@ -330,7 +373,10 @@ pub unsafe extern "C" fn cteInsert(newCap: cap_t, srcSlot: *mut cte_t, destSlot:
     (*destSlot).cteMDBNode = newMDB;
     mdb_node_ptr_set_mdbNext(&mut (*srcSlot).cteMDBNode, destSlot as u64);
     if mdb_node_get_mdbNext(newMDB) != 0u64 {
-        mdb_node_ptr_set_mdbPrev(&mut (*(mdb_node_get_mdbNext(newMDB) as *mut cte_t)).cteMDBNode, destSlot as u64);
+        mdb_node_ptr_set_mdbPrev(
+            &mut (*(mdb_node_get_mdbNext(newMDB) as *mut cte_t)).cteMDBNode,
+            destSlot as u64,
+        );
     }
 }
 
@@ -429,8 +475,11 @@ pub unsafe extern "C" fn emptySlot(slot: *mut cte_t, cleanupInfo: cap_t) {
             mdb_node_ptr_set_mdbPrev(&mut (*next).cteMDBNode, prev as u64);
         }
         if next as u64 != 0u64 {
-            mdb_node_ptr_set_mdbFirstBadged(&mut (*next).cteMDBNode, 
-                mdb_node_get_mdbFirstBadged((*next).cteMDBNode) | mdb_node_get_mdbFirstBadged(mdbNode));
+            mdb_node_ptr_set_mdbFirstBadged(
+                &mut (*next).cteMDBNode,
+                mdb_node_get_mdbFirstBadged((*next).cteMDBNode)
+                    | mdb_node_get_mdbFirstBadged(mdbNode),
+            );
         }
         (*slot).cap = cap_null_cap_new();
         (*slot).cteMDBNode = mdb_node_new(0, 0, 0, 0);
@@ -453,8 +502,8 @@ unsafe fn capRemovable(cap: cap_t, slot: *mut cte_t) -> bool {
 
 #[inline]
 unsafe fn capCyclicZombie(cap: cap_t, slot: *mut cte_t) -> bool {
-    cap_get_capType(cap) == cap_tag_t::cap_zombie_cap as u64 &&
-        cap_zombie_cap_get_capZombiePtr(cap) as *mut cte_t == slot
+    cap_get_capType(cap) == cap_tag_t::cap_zombie_cap as u64
+        && cap_zombie_cap_get_capZombiePtr(cap) as *mut cte_t == slot
 }
 
 unsafe fn finaliseSlot(slot: *mut cte_t, immediate: bool_t) -> finaliseSlot_ret_t {
@@ -514,9 +563,10 @@ unsafe fn reduceZombie(slot: *mut cte_t, immediate: bool_t) -> u64 {
         if cap_type == cap_tag_t::cap_null_cap as u64 {
         } else if cap_type == cap_tag_t::cap_zombie_cap as u64 {
             let ptr2 = cap_zombie_cap_get_capZombiePtr((*slot).cap) as *mut cte_t;
-            if ptr == ptr2 &&
-                cap_zombie_cap_get_capZombieNumber((*slot).cap) == n &&
-                cap_zombie_cap_get_capZombieType((*slot).cap) == type_ {
+            if ptr == ptr2
+                && cap_zombie_cap_get_capZombieNumber((*slot).cap) == n
+                && cap_zombie_cap_get_capZombieType((*slot).cap) == type_
+            {
                 (*slot).cap = cap_zombie_cap_set_capZombieNumber((*slot).cap, n - 1);
             }
         } else {
@@ -575,15 +625,15 @@ pub unsafe extern "C" fn isMDBParentOf(cte_a: *mut cte_t, cte_b: *mut cte_t) -> 
         if badge == 0u64 {
             return 1u64;
         }
-        return ((badge == cap_endpoint_cap_get_capEPBadge((*cte_b).cap)) &&
-               mdb_node_get_mdbFirstBadged((*cte_b).cteMDBNode) == 0u64) as u64;
+        return ((badge == cap_endpoint_cap_get_capEPBadge((*cte_b).cap))
+            && mdb_node_get_mdbFirstBadged((*cte_b).cteMDBNode) == 0u64) as u64;
     } else if cap_type == cap_tag_t::cap_notification_cap as u64 {
         let badge = cap_notification_cap_get_capNtfnBadge((*cte_a).cap);
         if badge == 0u64 {
             return 1u64;
         }
-        return ((badge == cap_notification_cap_get_capNtfnBadge((*cte_b).cap)) &&
-            mdb_node_get_mdbFirstBadged((*cte_b).cteMDBNode) == 0u64) as u64;
+        return ((badge == cap_notification_cap_get_capNtfnBadge((*cte_b).cap))
+            && mdb_node_get_mdbFirstBadged((*cte_b).cteMDBNode) == 0u64) as u64;
     }
     1u64
 }
@@ -633,14 +683,13 @@ pub unsafe extern "C" fn isFinalCapability(cte: *mut cte_t) -> bool_t {
 #[no_mangle]
 pub unsafe extern "C" fn slotCapLongRunningDelete(slot: *mut cte_t) -> bool_t {
     let cap_type = cap_get_capType((*slot).cap);
-    if cap_type == cap_tag_t::cap_null_cap as u64 {
-        return 0u64;
-    } else if isFinalCapability(slot) == 0u64 {
+    if cap_type == cap_tag_t::cap_null_cap as u64 || isFinalCapability(slot) == 0u64 {
         return 0u64;
     }
-    if cap_type == cap_tag_t::cap_thread_cap as u64 ||
-        cap_type == cap_tag_t::cap_zombie_cap as u64 ||
-        cap_type == cap_tag_t::cap_cnode_cap as u64 {
+    if cap_type == cap_tag_t::cap_thread_cap as u64
+        || cap_type == cap_tag_t::cap_zombie_cap as u64
+        || cap_type == cap_tag_t::cap_cnode_cap as u64
+    {
         return 1u64;
     }
     0u64

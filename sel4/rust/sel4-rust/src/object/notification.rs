@@ -4,28 +4,26 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused_attributes)]
 
-use crate::types::*;
-use crate::structures::*;
-use crate::failures::*;
 use crate::errors::*;
-use crate::thread::*;
-use crate::object::arch_structures::*;
-use crate::object::objecttype::*;
-use crate::object::cap::*;
-use crate::registerset::*;
+use crate::failures::*;
 use crate::model::statedata::*;
-use crate::object::tcb::{tcbSchedEnqueue,tcbEPDequeue,tcbEPAppend};
+use crate::object::arch_structures::*;
+use crate::object::cap::*;
+use crate::object::objecttype::*;
+use crate::object::tcb::{tcbEPAppend, tcbEPDequeue, tcbSchedEnqueue};
+use crate::registerset::*;
+use crate::structures::*;
 use crate::thread::possibleSwitchTo;
-
+use crate::thread::*;
+use crate::types::*;
 
 extern "C" {
     //fn tcbSchedEnqueue(tcb:*mut tcb_t);
     fn cancelIPC(tptr: *mut tcb_t);
-    //fn possibleSwitchTo(tptr: *mut tcb_t);
-    //fn tcbEPDequeue(tcb: *mut tcb_t, queue: tcb_queue_t) -> tcb_queue_t;
-    //fn tcbEPAppend(tcb: *mut tcb_t, queue: tcb_queue_t) -> tcb_queue_t;
+//fn possibleSwitchTo(tptr: *mut tcb_t);
+//fn tcbEPDequeue(tcb: *mut tcb_t, queue: tcb_queue_t) -> tcb_queue_t;
+//fn tcbEPAppend(tcb: *mut tcb_t, queue: tcb_queue_t) -> tcb_queue_t;
 }
-
 
 #[inline]
 pub unsafe fn ntfn_ptr_get_queue(ntfnPtr: *mut notification_t) -> tcb_queue_t {
@@ -55,7 +53,9 @@ pub unsafe extern "C" fn sendSignal(ntfnPtr: *mut notification_t, badge: u64) {
     if state == notification_state::NtfnState_Idle as u64 {
         let tcb = notification_ptr_get_ntfnBoundTCB(&*ntfnPtr) as *mut tcb_t;
         if tcb as u64 != 0u64 {
-            if thread_state_ptr_get_tsType(&mut (*tcb).tcbState) == _thread_state::ThreadState_BlockedOnReceive as u64 {
+            if thread_state_ptr_get_tsType(&mut (*tcb).tcbState)
+                == _thread_state::ThreadState_BlockedOnReceive as u64
+            {
                 cancelIPC(tcb);
                 setThreadState(tcb, _thread_state::ThreadState_Running as u64);
                 setRegister(tcb, badgeRegister, badge);
@@ -88,13 +88,15 @@ pub unsafe extern "C" fn sendSignal(ntfnPtr: *mut notification_t, badge: u64) {
 pub unsafe extern "C" fn receiveSignal(thread: *mut tcb_t, cap: cap_t, isBlocking: bool_t) {
     let ntfnPtr = cap_notification_cap_get_capNtfnPtr(cap) as *mut notification_t;
     let state = notification_ptr_get_state(&*ntfnPtr);
-    if state == notification_state::NtfnState_Idle as u64 ||
-        state == notification_state::NtfnState_Waiting as u64 {
+    if state == notification_state::NtfnState_Idle as u64
+        || state == notification_state::NtfnState_Waiting as u64
+    {
         if isBlocking == 1u64 {
-            thread_state_ptr_set_tsType(&mut (*thread).tcbState,
-                _thread_state::ThreadState_BlockedOnNotification as u64);
-            thread_state_ptr_set_blockingObject(&mut (*thread).tcbState,
-                ntfnPtr as u64);
+            thread_state_ptr_set_tsType(
+                &mut (*thread).tcbState,
+                _thread_state::ThreadState_BlockedOnNotification as u64,
+            );
+            thread_state_ptr_set_blockingObject(&mut (*thread).tcbState, ntfnPtr as u64);
             scheduleTCB(thread);
             let mut ntfn_queue = ntfn_ptr_get_queue(ntfnPtr);
             ntfn_queue = tcbEPAppend(thread, ntfn_queue);
@@ -104,7 +106,11 @@ pub unsafe extern "C" fn receiveSignal(thread: *mut tcb_t, cap: cap_t, isBlockin
             doNBRecvFailedTransfer(thread);
         }
     } else if state == notification_state::NtfnState_Active as u64 {
-        setRegister(thread, badgeRegister, notification_ptr_get_ntfnMsgIdentifier(&*ntfnPtr));
+        setRegister(
+            thread,
+            badgeRegister,
+            notification_ptr_get_ntfnMsgIdentifier(&*ntfnPtr),
+        );
         notification_ptr_set_state(&mut *ntfnPtr, notification_state::NtfnState_Idle as u64);
     }
 }
@@ -138,7 +144,9 @@ pub unsafe extern "C" fn cancelSignal(threadPtr: *mut tcb_t, ntfnPtr: *mut notif
 
 #[no_mangle]
 pub unsafe extern "C" fn completeSignal(ntfnPtr: *mut notification_t, tcb: *mut tcb_t) {
-    if tcb as u64 != 0u64 && notification_ptr_get_state(&*ntfnPtr) == notification_state::NtfnState_Active as u64 {
+    if tcb as u64 != 0u64
+        && notification_ptr_get_state(&*ntfnPtr) == notification_state::NtfnState_Active as u64
+    {
         let badge = notification_ptr_get_ntfnMsgIdentifier(&*ntfnPtr);
         setRegister(tcb, badgeRegister, badge);
         notification_ptr_set_state(&mut *ntfnPtr, notification_state::NtfnState_Idle as u64);

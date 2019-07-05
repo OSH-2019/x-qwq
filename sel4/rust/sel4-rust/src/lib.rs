@@ -9,18 +9,19 @@ pub mod model;
 #[macro_use]
 pub mod errors;
 
-pub mod object;
-pub mod types;
-pub mod structures;
-pub mod thread;
 pub mod cspace;
-pub mod registerset;
 pub mod failures;
-pub mod syscall;
 pub mod invocation;
+pub mod object;
+pub mod registerset;
+pub mod structures;
+pub mod syscall;
+pub mod thread;
+pub mod types;
 
 #[allow(unused_attributes)]
-#[no_mangle] pub unsafe extern "C" fn rust_add(a: i32, b: i32) -> i32 {
+#[no_mangle]
+pub unsafe extern "C" fn rust_add(a: i32, b: i32) -> i32 {
     a + b
 }
 

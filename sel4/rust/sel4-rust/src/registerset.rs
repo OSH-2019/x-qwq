@@ -5,13 +5,13 @@ use crate::structures::tcb_t;
 use crate::types::word_t;
 
 //include/arch/x86/arch/64/mode/machine/registerset.h
-pub type register_t=u32;
+pub type register_t = u32;
 
 //include/machine/registerset.h
-pub unsafe fn setRegister(thread:*mut tcb_t,reg:register_t,w:word_t){
-    (*thread).tcbArch.tcbContext.registers[reg as usize]=w;
+pub unsafe fn setRegister(thread: *mut tcb_t, reg: register_t, w: word_t) {
+    (*thread).tcbArch.tcbContext.registers[reg as usize] = w;
 }
-pub unsafe fn getRegister(thread:*mut tcb_t,reg:register_t)->word_t{
+pub unsafe fn getRegister(thread: *mut tcb_t, reg: register_t) -> word_t {
     (*thread).tcbArch.tcbContext.registers[reg as usize]
 }
 
@@ -52,7 +52,6 @@ pub const n_contextRegisters: u32 = 23;
 
 pub const msgRegisters: [u32; 4] = [R10, R8, R9, R15];
 pub const frameRegisters: [u32; 18] = [
-    FaultIP, RSP, FLAGS, RAX, RBX, RCX, RDX, RSI, RDI, RBP,
-    R8, R9, R10, R11, R12, R13, R14, R15
+    FaultIP, RSP, FLAGS, RAX, RBX, RCX, RDX, RSI, RDI, RBP, R8, R9, R10, R11, R12, R13, R14, R15,
 ];
 pub const gpRegisters: [u32; 1] = [TLS_BASE];
